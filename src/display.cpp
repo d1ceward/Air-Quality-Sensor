@@ -1,5 +1,6 @@
-#include "display.h"
+// Local includes
 #include "config.h"
+#include "display.h"
 
 // 64x48 SSD1306 (example) - adjust if using different variant
 static U8G2_SSD1306_64X48_ER_1_HW_I2C u8g2(U8G2_R2, /* reset=*/ U8X8_PIN_NONE);
@@ -8,7 +9,8 @@ namespace Display {
   void begin() {
     u8g2.setBusClock(100000); // safe default
     u8g2.begin();
-    drawStrings(PROJECT_NAME, "v" PROJECT_VERSION, "Booting...");
+    String versionStr = String("v") + PROJECT_VERSION;
+    drawStrings(PROJECT_NAME, versionStr.c_str(), "Booting...");
   }
 
   void drawStrings(const String &line1, const String &line2, const String &line3) {
