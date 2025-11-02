@@ -2,7 +2,7 @@
 
 // Local includes
 #include "config.h"
-#include "wifi.h"
+#include "sensor_wifi.h"
 #include "webui.h"
 
 extern ESP8266WebServer server;
@@ -26,6 +26,7 @@ String getWiFiInfoHtml() {
   String html;
   html += "<h2>WiFi Info</h2>";
   html += "<ul>";
+  html += "<li>Mode: " + String(WiFi.getMode() == WIFI_AP ? "Access Point (AP)" : "Station (STA)") + "</li>";
   html += "<li>SSID: " + String(WiFi.SSID()) + "</li>";
   html += "<li>IP: " + WiFi.localIP().toString() + "</li>";
   html += "<li>MAC: " + WiFi.macAddress() + "</li>";
@@ -48,8 +49,8 @@ void handleConfigForm() {
   String html = "<html><head><title>WiFi Config</title></head><body>";
   html += "<h1>WiFi Configuration</h1>";
   html += "<form method='POST' action='/config'>";
-  html += "SSID: <input name='ssid' value='" + String(WifiConnect::getSSID()) + "'><br>";
-  html += "Password: <input name='pass' type='password' value='" + String(WifiConnect::getPASS()) + "'><br>";
+  html += "SSID: <input name='ssid' value='" + String(SensorWifi::getSSID()) + "'><br>";
+  html += "Password: <input name='pass' type='password' value='" + String(SensorWifi::getPASS()) + "'><br>";
   html += "<input type='submit' value='Save'>";
   html += "</form>";
   html += "<a href='/'>Back</a>";
@@ -61,8 +62,11 @@ void handleConfigPost() {
   if (server.hasArg("ssid") && server.hasArg("pass")) {
     String ssid = server.arg("ssid");
     String pass = server.arg("pass");
-    WifiConnect::saveConfig(ssid.c_str(), pass.c_str());
-    server.send(200, "text/html", "<html><body><h1>Saved! Reboot to apply changes.</h1><a href='/'>Back</a></body></html>");
+    SensorWifi::saveConfig(ssid.c_str(), pass.c_str());
+    server.send(200, "text/html", "<html><body><h1>WiFi credentials saved!<br>Rebooting and switching to Station mode...</h1></body></html>");
+    delay(1000);
+    SensorWifi::applyWiFiConfigFromWebUI(ssid.c_str(), pass.c_str());
+    ESP.restart();
     return;
   }
   server.send(400, "text/html", "<html><body><h1>Missing SSID or Password</h1><a href='/config'>Back</a></body></html>");

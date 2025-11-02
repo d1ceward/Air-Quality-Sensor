@@ -1,19 +1,47 @@
+#include <ESP8266WiFi.h>
+
 // Local includes
 #include "config.h"
-#include "wifi.h"
+#include "sensor_wifi.h"
 #include "storage.h"
 
-#define EEPROM_SIZE 128
 #define WIFI_SSID_ADDR 0
 #define WIFI_PASS_ADDR 32
+#define DEFAULT_AP_SSID "AirQualitySetup"
+#define DEFAULT_AP_PASS "airquality123"
 
-static char wifi_ssid[WIFI_SSID_MAXLEN + 1] = {0};
-static char wifi_pass[WIFI_PASS_MAXLEN + 1] = {0};
+namespace SensorWifi {
+  static char wifi_ssid[WIFI_SSID_MAXLEN + 1] = {0};
+  static char wifi_pass[WIFI_PASS_MAXLEN + 1] = {0};
+  static bool isAPMode = true;
 
-namespace WifiConnect {
+  // --- AP/STA Mode Functions ---
+  void startAPMode() {
+      WiFi.mode(WIFI_AP);
+      WiFi.softAP(DEFAULT_AP_SSID, DEFAULT_AP_PASS);
+      isAPMode = true;
+  }
+
+  void startSTAMode(const char* ssid, const char* pass) {
+      WiFi.softAPdisconnect(true);
+      WiFi.mode(WIFI_STA);
+      WiFi.begin(ssid, pass);
+      isAPMode = false;
+  }
+
+  // This function should be called after user sets WiFi config via webui
+  void applyWiFiConfigFromWebUI(const char* ssid, const char* pass) {
+      startSTAMode(ssid, pass);
+  }
+
+  // Optionally, you can call this in main if you want to always start AP for config
+  void setupWiFi() {
+    startAPMode();
+  }
+
   void loadConfig() {
     // Initialize EEPROM
-    Storage::begin(EEPROM_SIZE);
+    Storage::begin();
 
     // Read stored SSID and password
     String ssid = Storage::readString(WIFI_SSID_ADDR, WIFI_SSID_MAXLEN);
@@ -33,49 +61,34 @@ namespace WifiConnect {
   }
 
   void saveConfig(const char* ssid, const char* pass) {
-    // Write SSID and password to EEPROM
     Storage::writeString(WIFI_SSID_ADDR, ssid, WIFI_SSID_MAXLEN);
     Storage::writeString(WIFI_PASS_ADDR, pass, WIFI_PASS_MAXLEN);
-
-    // Commit changes to EEPROM
     Storage::commit();
-
-    // Update in-memory copies
     strncpy(wifi_ssid, ssid, WIFI_SSID_MAXLEN);
     wifi_ssid[WIFI_SSID_MAXLEN] = '\0';
     strncpy(wifi_pass, pass, WIFI_PASS_MAXLEN);
     wifi_pass[WIFI_PASS_MAXLEN] = '\0';
   }
 
-  const char* getSSID() { return wifi_ssid; }
+  const char* getSSID() {
+    // If not set, return empty string
+    if (wifi_ssid[0] == '\0' || strcmp(wifi_ssid, WIFI_SSID) == 0) return "";
+    return wifi_ssid;
+  }
   const char* getPASS() { return wifi_pass; }
 
   void connect(const char* ssid, const char* pass) {
-    // Set WiFi to station mode
     WiFi.mode(WIFI_STA);
-
-    // Set static IP configuration
-    if (!WiFi.config(STATIC_IP, GATEWAY, SUBNET, DNS)) {
-      Serial.println("STA Failed to configure");
-    }
-
-    // Set device hostname
     WiFi.setHostname(WIFI_HOSTNAME);
-
-    // Begin WiFi connection
     Serial.print("Connecting to WiFi: ");
     Serial.println(ssid);
     WiFi.begin(ssid, pass);
-
-    // Wait for connection with retries
     int wifi_attempts = 0;
     while (WiFi.status() != WL_CONNECTED && wifi_attempts < MAX_WIFI_ATTEMPTS) {
         delay(WIFI_RETRY_DELAY_MS);
         Serial.print(".");
         ++wifi_attempts;
     }
-
-    // Print connection result
     Serial.println();
     if (WiFi.status() == WL_CONNECTED) {
       Serial.print("WiFi connected. IP address: ");

@@ -4,8 +4,9 @@
 
 // Local includes
 #include "config.h"
+#include "sensor_serial.h"
 #include "display.h"
-#include "wifi.h"
+#include "sensor_wifi.h"
 #include "webui.h"
 
 // Timing variables
@@ -14,25 +15,24 @@ unsigned long lastUpdate = 0;
 // Create web server instance
 ESP8266WebServer server(80);
 
+void initializeWiFi() {
+  SensorWifi::loadConfig();
+  const char* ssid = SensorWifi::getSSID();
+
+  if (strlen(ssid) == 0 || strcmp(ssid, WIFI_SSID) == 0) {
+    Serial.println("No WiFi config found, starting in AP mode for setup...");
+    SensorWifi::startAPMode();
+  } else {
+    Serial.println("WiFi config found, starting in STA mode...");
+    SensorWifi::connect(ssid, SensorWifi::getPASS());
+  }
+}
+
 void setup() {
-  // Initialize serial for debugging
-  Serial.begin(115200);
-
-  // Small delay to allow serial monitor to connect
-  delay(1000);
-
-  // Startup messages
-  Serial.println();
-  Serial.println(String(PROJECT_NAME) + " starting...");
-
-  // Initialize display
+  SensorSerial::initializeSerial();
   Display::begin();
+  initializeWiFi();
 
-  // Load WiFi configuration and connect
-  WifiConnect::loadConfig();
-  WifiConnect::connect(WifiConnect::getSSID(), WifiConnect::getPASS());
-
-  // Web server routes
   setupWebUI(server);
   server.begin();
   Serial.println("Web server started.");
