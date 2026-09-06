@@ -223,21 +223,28 @@ scrape_configs:
 The original firmware also answered on `/`; that path now serves the web UI, so
 a scrape configuration pointing at `/` must be updated to `/metrics`.
 
-Metrics `tvoc`, `co2`, `pm25`, `aqius`, `temp` and `hum` keep their original
-names and their `id` and `mac` labels. Added: `pm1`, `pm10`, `eco2`,
-`particle_count_03`, `particle_count_25`, `pressure`, `pressure_sea_level`,
-`altitude`, `battery_volts`, `battery_percent`, `wifi_rssi`, `uptime_seconds`
-and `heap_free_bytes`.
+Every metric is prefixed with `air_quality_`, so short names such as `temp` or
+`pressure` cannot collide with another exporter scraped by the same Prometheus.
+The original firmware exported them unprefixed: dashboards and alerting rules
+written against `tvoc`, `co2`, `pm25`, `aqius`, `temp` or `hum` need renaming to
+`air_quality_tvoc` and so on. The `id` and `mac` labels are unchanged.
 
-Pressure is exported in hPa. `pressure` is what the sensor measures,
-`pressure_sea_level` is that value reduced to sea level using the configured
-station altitude, which is the figure comparable to weather forecasts.
-`altitude` is derived from the standard atmosphere (1013.25 hPa) and drifts with
-the weather, so it is a rough indication rather than a position.
+Exported: `air_quality_tvoc`, `_eco2`, `_co2`, `_pm25`, `_pm1`, `_pm10`,
+`_aqius`, `_particle_count_03`, `_particle_count_25`, `_temp`, `_hum`,
+`_pressure`, `_pressure_sea_level`, `_altitude`, `_battery_volts`,
+`_battery_percent`, `_wifi_rssi`, `_uptime_seconds` and `_heap_free_bytes`.
+
+Pressure is exported in hPa. `air_quality_pressure` is what the sensor measures,
+`air_quality_pressure_sea_level` is that value reduced to sea level using the
+configured station altitude, which is the figure comparable to weather
+forecasts. `air_quality_altitude` is derived from the standard atmosphere
+(1013.25 hPa) and drifts with the weather, so it is a rough indication rather
+than a position.
 
 A metric is omitted while its sensor has no fresh reading, instead of reporting
 a misleading zero. The PMS5003 fan is duty cycled to preserve its laser and its
-fan, so `pm25` is refreshed once per cycle, about every six minutes.
+fan, so `air_quality_pm25` is refreshed once per cycle, about every six
+minutes.
 
 ## Configuration
 

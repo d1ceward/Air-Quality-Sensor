@@ -14,6 +14,10 @@ namespace Metrics {
   namespace {
     constexpr size_t CHUNK_FLUSH_SIZE = 512;
 
+    // Namespace prefixing every exported metric, so short names such as "temp"
+    // or "pressure" cannot collide with another exporter on the same Prometheus.
+    const __FlashStringHelper *metricPrefix() { return F("air_quality_"); }
+
     // Label values must escape backslashes, quotes and newlines
     String escapeLabel(const String &value) {
       String result;
@@ -48,12 +52,15 @@ namespace Metrics {
                       const __FlashStringHelper *name, const __FlashStringHelper *help,
                       const String &value) {
       buffer += F("# HELP ");
+      buffer += metricPrefix();
       buffer += name;
       buffer += ' ';
       buffer += help;
       buffer += F("\n# TYPE ");
+      buffer += metricPrefix();
       buffer += name;
       buffer += F(" gauge\n");
+      buffer += metricPrefix();
       buffer += name;
       buffer += labels;
       buffer += ' ';
@@ -77,8 +84,7 @@ namespace Metrics {
     String buffer;
     buffer.reserve(CHUNK_FLUSH_SIZE + 256);
 
-    // Metric names are kept identical to the original firmware so existing
-    // dashboards and alerting rules keep working.
+    // Names below are the suffixes; metricPrefix() namespaces each of them.
     if (readings.hasTvoc) {
       appendMetric(server, buffer, labels, F("tvoc"), F("TVOC value, in ppb"),
                    String(readings.tvocPpb));
