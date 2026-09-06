@@ -128,6 +128,10 @@ button:hover, .btn:hover { border-color: var(--accent); }
         <div><label for="gateway">Gateway</label><input type="text" id="gateway" name="gateway"></div>
         <div><label for="subnet">Subnet mask</label><input type="text" id="subnet" name="subnet"></div>
         <div><label for="dns">DNS server</label><input type="text" id="dns" name="dns"></div>
+        <div><label for="displayBrightness">Brightness (0-255)</label><input type="number" id="displayBrightness" name="displayBrightness" min="0" max="255"></div>
+        <div><label for="displayNightBrightness">Night brightness (0 = off)</label><input type="number" id="displayNightBrightness" name="displayNightBrightness" min="0" max="255"></div>
+        <div><label for="displayNightStartHour">Night from (hour)</label><input type="number" id="displayNightStartHour" name="displayNightStartHour" min="0" max="23"></div>
+        <div><label for="displayNightEndHour">Night until (hour)</label><input type="number" id="displayNightEndHour" name="displayNightEndHour" min="0" max="23"></div>
         <div class="check"><input type="checkbox" id="showClockPage" name="showClockPage"><label for="showClockPage" style="margin:0">Show clock page</label></div>
         <div class="check"><input type="checkbox" id="flipDisplay" name="flipDisplay"><label for="flipDisplay" style="margin:0">Rotate display 180&deg;</label></div>
       </div>

@@ -27,6 +27,10 @@ namespace Config {
       target.timezone = DEFAULT_TIMEZONE;
       target.displayType = DISPLAY_TYPE_SH1106_128X64;
       target.batteryVoltageScale = DEFAULT_BATTERY_VOLTAGE_SCALE;
+      target.displayBrightness = DEFAULT_DISPLAY_BRIGHTNESS;
+      target.displayNightBrightness = DEFAULT_DISPLAY_NIGHT_BRIGHTNESS;
+      target.displayNightStartHour = DEFAULT_DISPLAY_NIGHT_START_HOUR;
+      target.displayNightEndHour = DEFAULT_DISPLAY_NIGHT_END_HOUR;
     }
 
     bool isSupportedDisplay(const String &value) {
@@ -58,6 +62,10 @@ namespace Config {
       document["batteryEnabled"] = source.batteryEnabled;
       document["batteryVoltageScale"] = source.batteryVoltageScale;
       document["displayType"] = source.displayType;
+      document["displayBrightness"] = source.displayBrightness;
+      document["displayNightBrightness"] = source.displayNightBrightness;
+      document["displayNightStartHour"] = source.displayNightStartHour;
+      document["displayNightEndHour"] = source.displayNightEndHour;
       document["showClockPage"] = source.showClockPage;
       document["flipDisplay"] = source.flipDisplay;
       document["sgpBaselineCo2"] = source.sgpBaselineCo2;
@@ -82,6 +90,10 @@ namespace Config {
       target.batteryEnabled = document["batteryEnabled"] | target.batteryEnabled;
       target.batteryVoltageScale = document["batteryVoltageScale"] | target.batteryVoltageScale;
       target.displayType = document["displayType"] | target.displayType;
+      target.displayBrightness = document["displayBrightness"] | target.displayBrightness;
+      target.displayNightBrightness = document["displayNightBrightness"] | target.displayNightBrightness;
+      target.displayNightStartHour = document["displayNightStartHour"] | target.displayNightStartHour;
+      target.displayNightEndHour = document["displayNightEndHour"] | target.displayNightEndHour;
       target.showClockPage = document["showClockPage"] | target.showClockPage;
       target.flipDisplay = document["flipDisplay"] | target.flipDisplay;
       target.sgpBaselineCo2 = document["sgpBaselineCo2"] | target.sgpBaselineCo2;
@@ -95,6 +107,16 @@ namespace Config {
       // A scale of 0 would report a flat battery on a healthy cell
       if (target.batteryVoltageScale <= 0.0f)
         target.batteryVoltageScale = DEFAULT_BATTERY_VOLTAGE_SCALE;
+      target.displayBrightness = DEFAULT_DISPLAY_BRIGHTNESS;
+      target.displayNightBrightness = DEFAULT_DISPLAY_NIGHT_BRIGHTNESS;
+      target.displayNightStartHour = DEFAULT_DISPLAY_NIGHT_START_HOUR;
+      target.displayNightEndHour = DEFAULT_DISPLAY_NIGHT_END_HOUR;
+
+      // An hour out of range would make the night window meaningless
+      if (target.displayNightStartHour > 23 || target.displayNightEndHour > 23) {
+        target.displayNightStartHour = DEFAULT_DISPLAY_NIGHT_START_HOUR;
+        target.displayNightEndHour = DEFAULT_DISPLAY_NIGHT_END_HOUR;
+      }
 
       // An unknown panel would leave the device without a usable display
       if (!isSupportedDisplay(target.displayType)) {
