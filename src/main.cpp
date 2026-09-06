@@ -23,6 +23,11 @@ static void printBanner() {
   Serial.printf("%s %s\n", PROJECT_NAME, PROJECT_VERSION);
   Serial.printf("chip %06x, flash %u KiB, core %s\n",
                 ESP.getChipId(), ESP.getFlashChipRealSize() / 1024, ESP.getCoreVersion().c_str());
+
+  // Repeated banners mean the board is restarting; the reason says whether it
+  // is a brownout, a watchdog or a crash.
+  Serial.printf("boot: %s\n", ESP.getResetReason().c_str());
+  Serial.printf("reset info: %s\n", ESP.getResetInfo().c_str());
 }
 
 void setup() {
