@@ -31,8 +31,31 @@ protocol is implemented locally.
 | Bosch BMP180 (GY-68) | barometric pressure, altitude | I2C `0x77` | D1 (SCL), D2 (SDA) |
 | SH1106 OLED 128x64 | display | I2C `0x3C` | D1 (SCL), D2 (SDA) |
 | SSD1306 OLED 64x48 | display, smaller board | I2C `0x3C` | D1 (SCL), D2 (SDA) |
+| Wemos battery shield | LiPo charging, 5 V boost | analog | A0 through the shield jumper |
 
 The pin map lives in [include/config.h](include/config.h).
+
+### Battery
+
+The 128x64 board can run from a Wemos D1 mini battery shield. Enable it under
+Battery in the web UI; it stays off by default so the other board is unaffected.
+
+Voltage is read on A0: the 130 kOhm resistor of the shield sits in series with
+the 220k/100k divider of the board, so the 1 V full scale of the converter
+lands at 4.5 V on the cell. That is the `batteryVoltageScale` setting, to trim
+against a multimeter if the resistor tolerances shift the reading.
+
+Expect around 1.6 hours from a 500 mAh cell. The load is close to 173 mA on the
+5 V rail, of which 48 mA is the SGP30 alone: its hotplate runs continuously and
+its baseline algorithm needs an uninterrupted 1 Hz measurement, so it cannot be
+duty cycled without losing its calibration. Peaks matter more than the average
+here: the SenseAir S8 draws up to 300 mA during a measurement and the radio as
+much while transmitting, which is about 1.17 A from the cell through the boost,
+or 2.3 C on a 500 mAh pack. Both the cell and the shield need to sustain that
+or the board will brown out and reboot.
+
+A percentage under load reads low: a LiPo sags by 50 to 100 mV at this current,
+and the curve is steep in that region.
 
 ### Two boards, one firmware
 
@@ -66,6 +89,8 @@ include/
   sensors.h                 Aggregated snapshot and US AQI conversion
   sensors/bmp180.h          Barometric pressure, sea level correction
   aqi.h                     US EPA index, no hardware dependency
+  battery.h                 Cell voltage on A0
+  battery_curve.h           LiPo state of charge, no hardware dependency
   barometry.h               Pressure conversions, no hardware dependency
   modbus_crc.h              Modbus CRC16, no hardware dependency
   sensors/pms5003.h         PMS5003 fan duty cycle and serial plumbing
@@ -93,10 +118,10 @@ pio test -e native
 The environment matters: `pio test` on its own follows `default_envs`, which is
 the firmware, where these suites are ignored and nothing runs.
 
-Twenty cases cover the PMS5003 frame parser (checksum rejection, resynchro-
+Twenty six cases cover the PMS5003 frame parser (checksum rejection, resynchro-
 nisation after garbage, payload offsets), the Modbus CRC16 against frames from
-the SenseAir S8 documentation, the EPA breakpoint table and the barometric
-conversions. Expected values come from the datasheets or from an independent
+the SenseAir S8 documentation, the EPA breakpoint table, the barometric
+conversions and the LiPo discharge curve. Expected values come from the datasheets or from an independent
 computation, never from the implementation under test.
 
 Everything else needs the hardware: the drivers, the web server and the display
@@ -158,7 +183,8 @@ a scrape configuration pointing at `/` must be updated to `/metrics`.
 Metrics `tvoc`, `co2`, `pm25`, `aqius`, `temp` and `hum` keep their original
 names and their `id` and `mac` labels. Added: `pm1`, `pm10`, `eco2`,
 `particle_count_03`, `particle_count_25`, `pressure`, `pressure_sea_level`,
-`altitude`, `wifi_rssi`, `uptime_seconds` and `heap_free_bytes`.
+`altitude`, `battery_volts`, `battery_percent`, `wifi_rssi`, `uptime_seconds`
+and `heap_free_bytes`.
 
 Pressure is exported in hPa. `pressure` is what the sensor measures,
 `pressure_sea_level` is that value reduced to sea level using the configured
@@ -185,6 +211,8 @@ LittleFS partition.
 | NTP server | `europe.pool.ntp.org` | |
 | Timezone | `CET-1CEST,M3.5.0,M10.5.0/3` | POSIX TZ string, DST included |
 | OTA password | `airquality` | Used by ArduinoOTA and `/update` |
+| Battery shield | off | Enables the A0 reading and the gauge |
+| Battery ADC scale | `4.5` V | Full scale of the divider, trim against a multimeter |
 | Display | `sh1106_128x64` | Or `ssd1306_64x48` for the smaller board |
 | Clock page | on | Alternate the display with date and time |
 | Rotate display | off | For a display mounted the other way up |

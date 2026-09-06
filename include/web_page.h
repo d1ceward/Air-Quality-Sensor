@@ -23,6 +23,7 @@ const char WEB_PAGE[] PROGMEM = R"rawliteral(<!doctype html>
   }
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body {
   margin: 0; padding: 24px 16px 48px; background: var(--bg); color: var(--text);
   font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -111,6 +112,8 @@ button:hover, .btn:hover { border-color: var(--accent); }
         <div><label for="deviceId">Device id</label><input type="text" id="deviceId" name="deviceId"></div>
         <div><label for="wifiSsid">WiFi network</label><input type="text" id="wifiSsid" name="wifiSsid"></div>
         <div><label for="wifiPassword">WiFi password</label><input type="password" id="wifiPassword" name="wifiPassword" placeholder="unchanged"></div>
+        <div class="check"><input type="checkbox" id="batteryEnabled" name="batteryEnabled"><label for="batteryEnabled" style="margin:0">Battery shield fitted</label></div>
+        <div><label for="batteryVoltageScale">Battery ADC scale (V)</label><input type="number" id="batteryVoltageScale" name="batteryVoltageScale" step="0.01" min="1"></div>
         <div><label for="displayType">Display</label><select id="displayType" name="displayType">
           <option value="sh1106_128x64">SH1106 128x64</option>
           <option value="ssd1306_64x48">SSD1306 64x48</option>
@@ -150,6 +153,10 @@ const CARDS = [
   { key: 'pressure', label: 'Pressure', unit: 'hPa', min: 950, max: 1050, steps: [null],
     value: r => r.pressure.value.toFixed(1), valid: r => r.pressure.valid,
     note: r => 'sea level ' + r.pressure.seaLevel.toFixed(1) + ' hPa' },
+  { key: 'battery', label: 'Battery', unit: '%', max: 100, steps: [null],
+    value: r => r.battery.percent, valid: r => r.battery.valid,
+    show: r => r.battery.enabled,
+    note: r => r.battery.volts.toFixed(2) + ' V' },
   { key: 'temperature', label: 'Temperature', unit: '°C', max: 40, steps: [null],
     value: r => r.climate.temperature.toFixed(1), valid: r => r.climate.valid },
   { key: 'humidity', label: 'Humidity', unit: '%', max: 100, steps: [null],
@@ -194,6 +201,11 @@ function renderStatus(status) {
 
   for (const card of CARDS) {
     const node = el('card-' + card.key);
+
+    // A card whose hardware is absent is hidden rather than left empty
+    node.hidden = card.show ? !card.show(status.readings) : false;
+    if (node.hidden) continue;
+
     const valid = card.valid(status.readings);
     const raw = valid ? card.value(status.readings) : null;
     const numeric = valid ? Number(raw) : 0;

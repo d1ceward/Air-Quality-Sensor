@@ -26,6 +26,7 @@ namespace Config {
       target.ntpServer = DEFAULT_NTP_SERVER;
       target.timezone = DEFAULT_TIMEZONE;
       target.displayType = DISPLAY_TYPE_SH1106_128X64;
+      target.batteryVoltageScale = DEFAULT_BATTERY_VOLTAGE_SCALE;
     }
 
     bool isSupportedDisplay(const String &value) {
@@ -54,6 +55,8 @@ namespace Config {
       document["ntpServer"] = source.ntpServer;
       document["timezone"] = source.timezone;
       document["altitudeMeters"] = source.altitudeMeters;
+      document["batteryEnabled"] = source.batteryEnabled;
+      document["batteryVoltageScale"] = source.batteryVoltageScale;
       document["displayType"] = source.displayType;
       document["showClockPage"] = source.showClockPage;
       document["flipDisplay"] = source.flipDisplay;
@@ -76,6 +79,8 @@ namespace Config {
       target.ntpServer = document["ntpServer"] | target.ntpServer;
       target.timezone = document["timezone"] | target.timezone;
       target.altitudeMeters = document["altitudeMeters"] | target.altitudeMeters;
+      target.batteryEnabled = document["batteryEnabled"] | target.batteryEnabled;
+      target.batteryVoltageScale = document["batteryVoltageScale"] | target.batteryVoltageScale;
       target.displayType = document["displayType"] | target.displayType;
       target.showClockPage = document["showClockPage"] | target.showClockPage;
       target.flipDisplay = document["flipDisplay"] | target.flipDisplay;
@@ -86,6 +91,10 @@ namespace Config {
       // A port of 0 would make the web server unreachable
       if (target.httpPort == 0)
         target.httpPort = DEFAULT_HTTP_PORT;
+
+      // A scale of 0 would report a flat battery on a healthy cell
+      if (target.batteryVoltageScale <= 0.0f)
+        target.batteryVoltageScale = DEFAULT_BATTERY_VOLTAGE_SCALE;
 
       // An unknown panel would leave the device without a usable display
       if (!isSupportedDisplay(target.displayType)) {

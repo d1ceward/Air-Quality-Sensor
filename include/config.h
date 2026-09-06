@@ -74,6 +74,17 @@ constexpr uint32_t DISPLAY_SENSORS_PAGE_MS = 6000U;
 constexpr uint32_t DISPLAY_CLOCK_PAGE_MS = 4000U;
 
 // ---------------------------------------------------------------------------
+// Battery, when a Wemos D1 mini battery shield is fitted
+// ---------------------------------------------------------------------------
+
+constexpr uint32_t BATTERY_INTERVAL_MS = 10000U;
+constexpr uint8_t BATTERY_ADC_SAMPLES = 8U;
+constexpr float BATTERY_ADC_FULL_SCALE = 1023.0f;
+// 130k on the shield plus the 220k/100k divider of the board: the 1 V full
+// scale of the converter corresponds to 4.5 V on the cell.
+constexpr float DEFAULT_BATTERY_VOLTAGE_SCALE = 4.5f;
+
+// ---------------------------------------------------------------------------
 // Network
 // ---------------------------------------------------------------------------
 

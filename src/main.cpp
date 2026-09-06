@@ -4,6 +4,7 @@
 
 // Local includes
 #include "app_config.h"
+#include "battery.h"
 #include "config.h"
 #include "display.h"
 #include "metrics.h"
@@ -30,6 +31,7 @@ void setup() {
 
   Config::begin();
   Display::begin();
+  Battery::begin();
   Sensors::begin();
 
   NetWifi::begin();
@@ -50,5 +52,6 @@ void loop() {
   NetWifi::loop();
   WebUI::loop();
   Sensors::loop();
+  Battery::loop();
   Display::loop();
 }

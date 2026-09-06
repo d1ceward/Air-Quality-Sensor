@@ -2,6 +2,7 @@
 #include <math.h>
 
 // Local includes
+#include "battery.h"
 #include "config.h"
 #include "display_pages.h"
 #include "net_time.h"
@@ -53,6 +54,19 @@ namespace DisplayPages {
       oled.sendBuffer();
     }
 
+    // A 20x9 battery outline filled in proportion to the charge
+    void drawBatteryGauge(U8G2 &oled, int16_t x, int16_t y) {
+      constexpr int16_t BODY_WIDTH = 18;
+      constexpr int16_t BODY_HEIGHT = 9;
+
+      oled.drawFrame(x, y, BODY_WIDTH, BODY_HEIGHT);
+      oled.drawBox(x + BODY_WIDTH, y + 3, 2, 3);
+
+      const int16_t fill = (BODY_WIDTH - 4) * Battery::percent() / 100;
+      if (fill > 0)
+        oled.drawBox(x + 2, y + 2, fill, BODY_HEIGHT - 4);
+    }
+
     void drawClock(U8G2 &oled) {
       oled.clearBuffer();
       oled.setFont(u8g2_font_helvB18_tn);
@@ -62,6 +76,14 @@ namespace DisplayPages {
       oled.drawStr(77, 26, NetTime::formattedWeekday().c_str());
       oled.setFont(u8g2_font_helvB24_tn);
       oled.drawStr(16, 56, NetTime::formattedClock().c_str());
+
+      // The clock page is the only one with room to spare
+      if (Battery::hasReading()) {
+        drawBatteryGauge(oled, 104, 38);
+        oled.setFont(u8g2_font_5x7_tf);
+        oled.drawStr(104, 58, (String(Battery::percent()) + "%").c_str());
+      }
+
       oled.sendBuffer();
     }
 

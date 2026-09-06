@@ -3,6 +3,7 @@
 
 // Local includes
 #include "app_config.h"
+#include "battery.h"
 #include "config.h"
 #include "metrics.h"
 #include "net_time.h"
@@ -125,6 +126,13 @@ namespace Metrics {
                    String(readings.altitudeM, 1));
     }
 
+    if (Battery::hasReading()) {
+      appendMetric(server, buffer, labels, F("battery_volts"), F("Battery cell voltage, in volts"),
+                   String(Battery::volts(), 3));
+      appendMetric(server, buffer, labels, F("battery_percent"),
+                   F("Battery state of charge, in percent"), String(Battery::percent()));
+    }
+
     appendMetric(server, buffer, labels, F("wifi_rssi"), F("WiFi signal strength, in dBm"),
                  String(NetWifi::rssi()));
     appendMetric(server, buffer, labels, F("uptime_seconds"), F("Time since boot, in seconds"),
@@ -181,6 +189,12 @@ namespace Metrics {
     pressure["seaLevel"] = serialized(String(readings.seaLevelPressureHpa, 2));
     pressure["altitude"] = serialized(String(readings.altitudeM, 1));
     pressure["temperature"] = serialized(String(readings.barometerTemperatureC, 2));
+
+    JsonObject battery = values["battery"].to<JsonObject>();
+    battery["enabled"] = Battery::isEnabled();
+    battery["valid"] = Battery::hasReading();
+    battery["volts"] = serialized(String(Battery::volts(), 3));
+    battery["percent"] = Battery::percent();
 
     JsonObject climate = values["climate"].to<JsonObject>();
     climate["valid"] = readings.hasClimate;

@@ -50,6 +50,8 @@ namespace WebUI {
       document["ntpServer"] = config.ntpServer;
       document["timezone"] = config.timezone;
       document["altitudeMeters"] = config.altitudeMeters;
+      document["batteryEnabled"] = config.batteryEnabled;
+      document["batteryVoltageScale"] = config.batteryVoltageScale;
       document["displayType"] = config.displayType;
       document["showClockPage"] = config.showClockPage;
       document["flipDisplay"] = config.flipDisplay;
@@ -92,6 +94,11 @@ namespace WebUI {
       config.timezone = document["timezone"] | config.timezone;
       config.altitudeMeters = document["altitudeMeters"] | config.altitudeMeters;
       config.showClockPage = document["showClockPage"] | config.showClockPage;
+      config.batteryEnabled = document["batteryEnabled"] | config.batteryEnabled;
+      config.batteryVoltageScale = document["batteryVoltageScale"] | config.batteryVoltageScale;
+
+      if (config.batteryVoltageScale <= 0.0f)
+        config.batteryVoltageScale = DEFAULT_BATTERY_VOLTAGE_SCALE;
 
       const char *displayType = document["displayType"];
       if (displayType != nullptr &&
