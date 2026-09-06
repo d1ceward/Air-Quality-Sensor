@@ -19,6 +19,22 @@ namespace WebUI {
       rebootAtMs = millis() + delayMs;
     }
 
+    // Guards the administrative routes. /metrics and /api/status stay open:
+    // a scraper cannot be asked for credentials, and the readings are what the
+    // device exists to publish.
+    bool authorised() {
+      const String &password = Config::get().adminPassword;
+      if (password.length() == 0)
+        return true;
+
+      if (httpServer->authenticate(ADMIN_USER, password.c_str()))
+        return true;
+
+      httpServer->requestAuthentication(BASIC_AUTH, "Air Quality Sensor",
+                                        "Authentication required\n");
+      return false;
+    }
+
     void sendJson(int code, const String &payload) {
       httpServer->send(code, F("application/json"), payload);
     }
@@ -36,6 +52,9 @@ namespace WebUI {
     }
 
     void handleGetConfig() {
+      if (!authorised())
+        return;
+
       const AppConfig &config = Config::get();
 
       JsonDocument document;
@@ -61,7 +80,7 @@ namespace WebUI {
       document["flipDisplay"] = config.flipDisplay;
       // Secrets are never sent back; empty fields mean "keep the current value"
       document["wifiPassword"] = "";
-      document["otaPassword"] = "";
+      document["adminPassword"] = "";
 
       String payload;
       serializeJson(document, payload);
@@ -80,6 +99,9 @@ namespace WebUI {
     }
 
     void handlePostConfig() {
+      if (!authorised())
+        return;
+
       JsonDocument document;
       const DeserializationError error = deserializeJson(document, httpServer->arg("plain"));
 
@@ -132,9 +154,9 @@ namespace WebUI {
       if (wifiPassword != nullptr && strlen(wifiPassword) > 0)
         config.wifiPassword = wifiPassword;
 
-      const char *otaPassword = document["otaPassword"];
-      if (otaPassword != nullptr && strlen(otaPassword) > 0)
-        config.otaPassword = otaPassword;
+      const char *adminPassword = document["adminPassword"];
+      if (adminPassword != nullptr && strlen(adminPassword) > 0)
+        config.adminPassword = adminPassword;
 
       if (config.httpPort == 0)
         config.httpPort = DEFAULT_HTTP_PORT;
@@ -149,11 +171,17 @@ namespace WebUI {
     }
 
     void handleReboot() {
+      if (!authorised())
+        return;
+
       sendJson(200, F("{\"status\":\"rebooting\"}"));
       scheduleReboot();
     }
 
     void handleCalibrateCo2() {
+      if (!authorised())
+        return;
+
       const bool started = SenseAirS8::calibrate();
       sendJson(started ? 200 : 500,
                started ? F("{\"status\":\"calibration started\"}")

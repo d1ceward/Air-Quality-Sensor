@@ -22,7 +22,7 @@ namespace Config {
       target = AppConfig();
       target.deviceId = defaultDeviceId();
       target.httpPort = DEFAULT_HTTP_PORT;
-      target.otaPassword = DEFAULT_OTA_PASSWORD;
+      target.adminPassword = DEFAULT_ADMIN_PASSWORD;
       target.ntpServer = DEFAULT_NTP_SERVER;
       target.timezone = DEFAULT_TIMEZONE;
       target.displayType = DISPLAY_TYPE_SH1106_128X64;
@@ -55,7 +55,7 @@ namespace Config {
       document["subnet"] = source.subnet.toString();
       document["dns"] = source.dns.toString();
       document["httpPort"] = source.httpPort;
-      document["otaPassword"] = source.otaPassword;
+      document["adminPassword"] = source.adminPassword;
       document["ntpServer"] = source.ntpServer;
       document["timezone"] = source.timezone;
       document["altitudeMeters"] = source.altitudeMeters;
@@ -83,7 +83,12 @@ namespace Config {
       target.subnet = parseIp(document["subnet"]);
       target.dns = parseIp(document["dns"]);
       target.httpPort = document["httpPort"] | target.httpPort;
-      target.otaPassword = document["otaPassword"] | target.otaPassword;
+      // The key used to be otaPassword, back when it only guarded the upload
+      const char *legacyPassword = document["otaPassword"];
+      if (legacyPassword != nullptr)
+        target.adminPassword = legacyPassword;
+
+      target.adminPassword = document["adminPassword"] | target.adminPassword;
       target.ntpServer = document["ntpServer"] | target.ntpServer;
       target.timezone = document["timezone"] | target.timezone;
       target.altitudeMeters = document["altitudeMeters"] | target.altitudeMeters;

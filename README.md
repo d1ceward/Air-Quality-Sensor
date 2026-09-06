@@ -164,11 +164,11 @@ password.
 
 With no WiFi credentials stored, the device starts an access point named
 `air-quality-setup-<chipid>` with the password `airquality`, and shows it on the
-display. Connect to it, open `http://192.168.4.1:9926/`, fill in the WiFi
+display. Connect to it, open `http://192.168.4.1/`, fill in the WiFi
 settings and save: the device reboots and joins the network.
 
-Afterwards the UI is reachable at `http://<ip>:9926/` or
-`http://air-quality-<chipid>.local:9926/`.
+Afterwards the UI is reachable at `http://<ip>/` or
+`http://air-quality-<chipid>.local/`.
 
 ## HTTP endpoints
 
@@ -177,11 +177,27 @@ Afterwards the UI is reachable at `http://<ip>:9926/` or
 | GET | `/` | Web UI |
 | GET | `/metrics` | Prometheus exposition |
 | GET | `/api/status` | Readings and device state, JSON |
-| GET | `/api/config` | Current configuration, secrets redacted |
-| POST | `/api/config` | Update configuration, then reboot |
-| POST | `/api/reboot` | Reboot |
-| POST | `/api/calibrate-co2` | Start SenseAir S8 background calibration |
-| GET, POST | `/update` | Firmware upload form, HTTP basic auth `admin` |
+| GET | `/api/config` | Current configuration, secrets redacted, password protected |
+| POST | `/api/config` | Update configuration, then reboot, password protected |
+| POST | `/api/reboot` | Reboot, password protected |
+| POST | `/api/calibrate-co2` | Start SenseAir S8 background calibration, password protected |
+| GET, POST | `/update` | Firmware upload form |
+
+### Authentication
+
+The administrative routes, `/api/config` both ways, `/api/reboot`,
+`/api/calibrate-co2` and `/update`, ask for HTTP basic authentication with the
+user `admin` and the admin password. The same password is what ArduinoOTA uses,
+so there is a single secret to manage. Clearing it in the settings leaves
+everything open.
+
+`/`, `/metrics` and `/api/status` stay open: a scraper cannot be asked for
+credentials, and the readings are what the device exists to publish.
+
+Basic authentication over plain HTTP means the password crosses the network
+base64 encoded, which is not encryption. It keeps a household from changing the
+settings by accident; it does not stand up to anyone capturing traffic on the
+link. TLS on an ESP8266 web server is not a practical alternative.
 
 ## Prometheus
 
@@ -190,7 +206,7 @@ scrape_configs:
   - job_name: air_quality
     metrics_path: /metrics
     static_configs:
-      - targets: ['192.168.1.2:9926']
+      - targets: ['192.168.1.2:80']
 ```
 
 The original firmware also answered on `/`; that path now serves the web UI, so
@@ -222,11 +238,11 @@ LittleFS partition.
 | Device id | `air-quality-<chipid>` | Prometheus `id` label, hostname and mDNS name |
 | WiFi network, password | empty | Empty password field keeps the stored one |
 | Static IP | off | Address, gateway, subnet and DNS |
-| HTTP port | `9926` | |
+| HTTP port | `80` | |
 | Station altitude | `0` m | Used to reduce pressure to sea level |
 | NTP server | `europe.pool.ntp.org` | |
 | Timezone | `CET-1CEST,M3.5.0,M10.5.0/3` | POSIX TZ string, DST included |
-| OTA password | `airquality` | Used by ArduinoOTA and `/update` |
+| Admin password | `airquality` | Settings, reboot, calibration, ArduinoOTA and `/update` |
 | Battery shield | off | Enables the A0 reading and the gauge |
 | Battery ADC scale | `4.5` V | Full scale of the divider, trim against a multimeter |
 | Display | `sh1106_128x64` | Or `ssd1306_64x48` for the smaller board |

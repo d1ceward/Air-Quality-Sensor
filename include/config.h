@@ -94,12 +94,15 @@ constexpr float DEFAULT_BATTERY_VOLTAGE_SCALE = 4.5f;
 // Network
 // ---------------------------------------------------------------------------
 
-constexpr uint16_t DEFAULT_HTTP_PORT = 9926U;
+constexpr uint16_t DEFAULT_HTTP_PORT = 80U;
 constexpr char DEFAULT_HOSTNAME[] = "air-quality";
 constexpr char DEFAULT_NTP_SERVER[] = "europe.pool.ntp.org";
 // POSIX timezone string: Central European Time with automatic DST
 constexpr char DEFAULT_TIMEZONE[] = "CET-1CEST,M3.5.0,M10.5.0/3";
-constexpr char DEFAULT_OTA_PASSWORD[] = "airquality";
+// Guards the settings, the reboot and calibration calls, and the firmware
+// upload form. An empty password leaves all of them open.
+constexpr char DEFAULT_ADMIN_PASSWORD[] = "airquality";
+constexpr char ADMIN_USER[] = "admin";
 
 // Fallback access point used when no WiFi network is configured or reachable
 constexpr char SETUP_AP_PASSWORD[] = "airquality";

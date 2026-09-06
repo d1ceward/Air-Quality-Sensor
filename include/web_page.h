@@ -108,6 +108,9 @@ button:hover, .btn:hover { border-color: var(--accent); }
   <section>
     <h2>Settings</h2>
     <form class="panel" id="settings">
+      <p id="settingsLock" hidden>Settings are password protected.
+        <button type="button" id="unlock">Unlock</button></p>
+      <div id="settingsFields">
       <div class="rows">
         <div><label for="deviceId">Device id</label><input type="text" id="deviceId" name="deviceId"></div>
         <div><label for="wifiSsid">WiFi network</label><input type="text" id="wifiSsid" name="wifiSsid"></div>
@@ -122,7 +125,7 @@ button:hover, .btn:hover { border-color: var(--accent); }
         <div><label for="altitudeMeters">Station altitude (m)</label><input type="number" id="altitudeMeters" name="altitudeMeters" step="1"></div>
         <div><label for="ntpServer">NTP server</label><input type="text" id="ntpServer" name="ntpServer"></div>
         <div><label for="timezone">Timezone (POSIX TZ)</label><input type="text" id="timezone" name="timezone"></div>
-        <div><label for="otaPassword">OTA password</label><input type="password" id="otaPassword" name="otaPassword" placeholder="unchanged"></div>
+        <div><label for="adminPassword">Admin password</label><input type="password" id="adminPassword" name="adminPassword" placeholder="unchanged"></div>
         <div class="check"><input type="checkbox" id="useStaticIp" name="useStaticIp"><label for="useStaticIp" style="margin:0">Static IP address</label></div>
         <div><label for="ip">IP address</label><input type="text" id="ip" name="ip"></div>
         <div><label for="gateway">Gateway</label><input type="text" id="gateway" name="gateway"></div>
@@ -138,6 +141,7 @@ button:hover, .btn:hover { border-color: var(--accent); }
       <div class="actions">
         <button type="submit" class="primary">Save and reboot</button>
         <button type="button" id="reload">Discard changes</button>
+      </div>
       </div>
     </form>
   </section>
@@ -242,6 +246,39 @@ function formatUptime(seconds) {
   return (days ? days + 'd ' : '') + hours + 'h ' + minutes + 'm';
 }
 
+let credentials = '';
+try { credentials = sessionStorage.getItem('auth') || ''; } catch (error) { /* storage off */ }
+
+const encode = text => btoa(String.fromCharCode(...new TextEncoder().encode(text)));
+
+// fetch() never raises the browser's own password dialog, so a 401 is handled
+// here. Asking on page load would be rude, hence the interactive flag.
+async function authedFetch(url, options = {}, interactive = true) {
+  const send = () => fetch(url, {
+    ...options,
+    cache: 'no-store',
+    headers: credentials ? { ...options.headers, Authorization: 'Basic ' + credentials } : options.headers,
+  });
+
+  let response = await send();
+  if (response.status !== 401 || !interactive) return response;
+
+  const password = prompt('Admin password');
+  if (password === null) return response;
+
+  credentials = encode('admin:' + password);
+  try { sessionStorage.setItem('auth', credentials); } catch (error) { /* storage off */ }
+
+  response = await send();
+  if (response.status === 401) {
+    credentials = '';
+    try { sessionStorage.removeItem('auth'); } catch (error) { /* storage off */ }
+    toast('Wrong password');
+  }
+
+  return response;
+}
+
 async function refresh() {
   try {
     const response = await fetch('/api/status', { cache: 'no-store' });
@@ -252,8 +289,15 @@ async function refresh() {
   }
 }
 
-async function loadSettings() {
-  const config = await (await fetch('/api/config', { cache: 'no-store' })).json();
+async function loadSettings(interactive = false) {
+  const response = await authedFetch('/api/config', {}, interactive);
+  const locked = response.status === 401;
+
+  el('settingsLock').hidden = !locked;
+  el('settingsFields').hidden = locked;
+  if (!response.ok) return;
+
+  const config = await response.json();
   for (const [key, value] of Object.entries(config)) {
     const field = el(key);
     if (!field) continue;
@@ -271,24 +315,25 @@ el('settings').addEventListener('submit', async event => {
     else if (field.value !== '') payload[field.name] = field.type === 'number' ? Number(field.value) : field.value;
   }
 
-  const response = await fetch('/api/config', {
+  const response = await authedFetch('/api/config', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
   });
 
   toast(response.ok ? 'Saved, rebooting...' : 'Save failed');
 });
 
-el('reload').addEventListener('click', () => loadSettings());
+el('reload').addEventListener('click', () => loadSettings(true));
+el('unlock').addEventListener('click', () => loadSettings(true));
 
 el('reboot').addEventListener('click', async () => {
   if (!confirm('Reboot the sensor?')) return;
-  await fetch('/api/reboot', { method: 'POST' });
+  await authedFetch('/api/reboot', { method: 'POST' });
   toast('Rebooting...');
 });
 
 el('calibrate').addEventListener('click', async () => {
   if (!confirm('Start CO2 background calibration? The sensor must have been in fresh outdoor air for several minutes.')) return;
-  const response = await fetch('/api/calibrate-co2', { method: 'POST' });
+  const response = await authedFetch('/api/calibrate-co2', { method: 'POST' });
   toast(response.ok ? 'Calibration started' : 'Calibration failed');
 });
 

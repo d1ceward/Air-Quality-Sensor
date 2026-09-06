@@ -16,7 +16,7 @@ struct AppConfig {
   IPAddress dns;
 
   uint16_t httpPort = 0;
-  String otaPassword;
+  String adminPassword;   // settings, reboot, calibration and firmware upload
 
   String ntpServer;
   String timezone;      // POSIX TZ string

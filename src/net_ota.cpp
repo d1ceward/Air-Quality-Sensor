@@ -50,8 +50,8 @@ namespace NetOta {
     const AppConfig &config = Config::get();
 
     ArduinoOTA.setHostname(NetWifi::hostname().c_str());
-    if (config.otaPassword.length() > 0)
-      ArduinoOTA.setPassword(config.otaPassword.c_str());
+    if (config.adminPassword.length() > 0)
+      ArduinoOTA.setPassword(config.adminPassword.c_str());
 
     ArduinoOTA.onStart(onStart);
     ArduinoOTA.onProgress(onProgress);
@@ -60,7 +60,7 @@ namespace NetOta {
     ArduinoOTA.begin();
 
     // Browser upload form, protected with the same password
-    httpUpdater.setup(&server, "/update", "admin", config.otaPassword.c_str());
+    httpUpdater.setup(&server, "/update", ADMIN_USER, config.adminPassword.c_str());
 
     Serial.printf("[ota] ready (network upload and http://%s:%u/update)\n",
                   NetWifi::hostname().c_str(), config.httpPort);
