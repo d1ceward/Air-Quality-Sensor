@@ -174,7 +174,8 @@ Afterwards the UI is reachable at `http://<ip>/` or
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/` | Web UI |
+| GET | `/` | Readings and device information, open |
+| GET | `/settings` | Configuration page, password protected |
 | GET | `/metrics` | Prometheus exposition |
 | GET | `/api/status` | Readings and device state, JSON |
 | GET | `/api/config` | Current configuration, secrets redacted, password protected |
@@ -185,14 +186,24 @@ Afterwards the UI is reachable at `http://<ip>/` or
 
 ### Authentication
 
-The administrative routes, `/api/config` both ways, `/api/reboot`,
+The UI is two pages. `/` shows the readings and asks for nothing. `/settings`
+carries the configuration form and the maintenance actions, and is password
+protected, as are the routes it calls.
+
+Protecting the settings page itself rather than only its API means the browser
+raises its own password dialog on a normal navigation, then carries the
+credentials on the calls that page makes. A `fetch` never raises that dialog,
+which is why the settings live behind their own URL.
+
+The protected routes, `/settings`, `/api/config` both ways, `/api/reboot`,
 `/api/calibrate-co2` and `/update`, ask for HTTP basic authentication with the
 user `admin` and the admin password. The same password is what ArduinoOTA uses,
 so there is a single secret to manage. Clearing it in the settings leaves
 everything open.
 
 `/`, `/metrics` and `/api/status` stay open: a scraper cannot be asked for
-credentials, and the readings are what the device exists to publish.
+credentials, and the readings are what the device exists to publish. Nothing on
+the readings page calls an authenticated route.
 
 Basic authentication over plain HTTP means the password crosses the network
 base64 encoded, which is not encryption. It keeps a household from changing the

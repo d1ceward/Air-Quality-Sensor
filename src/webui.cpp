@@ -39,8 +39,25 @@ namespace WebUI {
       httpServer->send(code, F("application/json"), payload);
     }
 
+    // Both pages share the same head, so it is streamed separately rather
+    // than stored twice in flash.
+    void sendPage(PGM_P body) {
+      httpServer->setContentLength(CONTENT_LENGTH_UNKNOWN);
+      httpServer->send(200, F("text/html; charset=utf-8"), "");
+      httpServer->sendContent_P(WEB_HEAD);
+      httpServer->sendContent_P(body);
+      httpServer->sendContent("");
+    }
+
     void handleRoot() {
-      httpServer->send_P(200, PSTR("text/html; charset=utf-8"), WEB_PAGE);
+      sendPage(WEB_STATUS);
+    }
+
+    void handleSettingsPage() {
+      if (!authorised())
+        return;
+
+      sendPage(WEB_SETTINGS);
     }
 
     void handleMetrics() {
@@ -203,6 +220,7 @@ namespace WebUI {
     httpServer = &server;
 
     server.on("/", HTTP_GET, handleRoot);
+    server.on("/settings", HTTP_GET, handleSettingsPage);
     server.on("/metrics", HTTP_GET, handleMetrics);
     server.on("/api/status", HTTP_GET, handleStatus);
     server.on("/api/config", HTTP_GET, handleGetConfig);

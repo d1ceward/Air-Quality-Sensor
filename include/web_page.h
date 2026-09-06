@@ -2,14 +2,17 @@
 
 #include <Arduino.h>
 
-// Single page web UI, served from flash. Kept self-contained (no CDN) so the
-// interface also works from the setup access point, without internet access.
-const char WEB_PAGE[] PROGMEM = R"rawliteral(<!doctype html>
+// Web UI, served from flash and split in two pages: the readings, open to
+// anyone, and the settings, behind the admin password. Both share this head so
+// the stylesheet is stored once.
+//
+// Kept self-contained, with no CDN, so the interface also works from the setup
+// access point, before the device has any internet access.
+const char WEB_HEAD[] PROGMEM = R"rawliteral(<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Air Quality Sensor</title>
 <style>
 :root {
   --bg: #0f1419; --panel: #171d24; --line: #262e38; --text: #e6edf3;
@@ -83,6 +86,10 @@ button:hover, .btn:hover { border-color: var(--accent); }
 }
 .toast.show { opacity: 1; }
 </style>
+)rawliteral";
+
+// Readings and device information. No call on this page is authenticated.
+const char WEB_STATUS[] PROGMEM = R"rawliteral(<title>Air Quality Sensor</title>
 </head>
 <body>
 <div class="wrap">
@@ -99,57 +106,8 @@ button:hover, .btn:hover { border-color: var(--accent); }
     <div class="panel info" id="info"></div>
     <div class="actions">
       <a class="btn" href="/metrics">Prometheus metrics</a>
-      <a class="btn" href="/update">Firmware update</a>
-      <button id="calibrate">Calibrate CO2</button>
-      <button id="reboot">Reboot</button>
+      <a class="btn" href="/settings">Settings</a>
     </div>
-  </section>
-
-  <section>
-    <h2>Settings</h2>
-    <form class="panel" id="settings">
-      <p id="settingsLock" hidden>Settings are password protected.
-        <button type="button" id="unlock">Unlock</button></p>
-      <div id="settingsFields">
-      <div class="rows">
-        <div><label for="deviceId">Device id</label><input type="text" id="deviceId" name="deviceId"></div>
-        <div><label for="wifiSsid">WiFi network</label><input type="text" id="wifiSsid" name="wifiSsid"></div>
-        <div><label for="wifiPassword">WiFi password</label><input type="password" id="wifiPassword" name="wifiPassword" placeholder="unchanged"></div>
-        <div class="check"><input type="checkbox" id="batteryEnabled" name="batteryEnabled"><label for="batteryEnabled" style="margin:0">Battery shield fitted</label></div>
-        <div><label for="batteryVoltageScale">Battery ADC scale (V)</label><input type="number" id="batteryVoltageScale" name="batteryVoltageScale" step="0.01" min="1"></div>
-        <div><label for="displayType">Display</label><select id="displayType" name="displayType">
-          <option value="sh1106_128x64">SH1106 128x64</option>
-          <option value="ssd1306_64x48">SSD1306 64x48</option>
-        </select></div>
-        <div><label for="httpPort">HTTP port</label><input type="number" id="httpPort" name="httpPort" min="1" max="65535"></div>
-        <div><label for="altitudeMeters">Station altitude (m)</label><input type="number" id="altitudeMeters" name="altitudeMeters" step="1"></div>
-        <div><label for="ntpServer">NTP server</label><input type="text" id="ntpServer" name="ntpServer"></div>
-        <div><label for="timezone">Timezone (POSIX TZ)</label><input type="text" id="timezone" name="timezone" list="timezones">
-          <datalist id="timezones">
-            <option value="CET-1CEST,M3.5.0,M10.5.0/3">Paris, Berlin, Madrid</option>
-            <option value="GMT0BST,M3.5.0/1,M10.5.0">London, Dublin, Lisbon</option>
-            <option value="EST5EDT,M3.2.0,M11.1.0">New York, Toronto</option>
-            <option value="UTC0">UTC, no daylight saving</option>
-          </datalist></div>
-        <div><label for="adminPassword">Admin password</label><input type="password" id="adminPassword" name="adminPassword" placeholder="unchanged"></div>
-        <div class="check"><input type="checkbox" id="useStaticIp" name="useStaticIp"><label for="useStaticIp" style="margin:0">Static IP address</label></div>
-        <div><label for="ip">IP address</label><input type="text" id="ip" name="ip"></div>
-        <div><label for="gateway">Gateway</label><input type="text" id="gateway" name="gateway"></div>
-        <div><label for="subnet">Subnet mask</label><input type="text" id="subnet" name="subnet"></div>
-        <div><label for="dns">DNS server</label><input type="text" id="dns" name="dns"></div>
-        <div><label for="displayBrightness">Brightness (0-255)</label><input type="number" id="displayBrightness" name="displayBrightness" min="0" max="255"></div>
-        <div><label for="displayNightBrightness">Night brightness (0 = off)</label><input type="number" id="displayNightBrightness" name="displayNightBrightness" min="0" max="255"></div>
-        <div><label for="displayNightStartHour">Night from (hour)</label><input type="number" id="displayNightStartHour" name="displayNightStartHour" min="0" max="23"></div>
-        <div><label for="displayNightEndHour">Night until (hour)</label><input type="number" id="displayNightEndHour" name="displayNightEndHour" min="0" max="23"></div>
-        <div class="check"><input type="checkbox" id="showClockPage" name="showClockPage"><label for="showClockPage" style="margin:0">Show clock page</label></div>
-        <div class="check"><input type="checkbox" id="flipDisplay" name="flipDisplay"><label for="flipDisplay" style="margin:0">Rotate display 180&deg;</label></div>
-      </div>
-      <div class="actions">
-        <button type="submit" class="primary">Save and reboot</button>
-        <button type="button" id="reload">Discard changes</button>
-      </div>
-      </div>
-    </form>
   </section>
 </div>
 <div class="toast" id="toast"></div>
@@ -253,39 +211,6 @@ function formatUptime(seconds) {
   return (days ? days + 'd ' : '') + hours + 'h ' + minutes + 'm';
 }
 
-let credentials = '';
-try { credentials = sessionStorage.getItem('auth') || ''; } catch (error) { /* storage off */ }
-
-const encode = text => btoa(String.fromCharCode(...new TextEncoder().encode(text)));
-
-// fetch() never raises the browser's own password dialog, so a 401 is handled
-// here. Asking on page load would be rude, hence the interactive flag.
-async function authedFetch(url, options = {}, interactive = true) {
-  const send = () => fetch(url, {
-    ...options,
-    cache: 'no-store',
-    headers: credentials ? { ...options.headers, Authorization: 'Basic ' + credentials } : options.headers,
-  });
-
-  let response = await send();
-  if (response.status !== 401 || !interactive) return response;
-
-  const password = prompt('Admin password');
-  if (password === null) return response;
-
-  credentials = encode('admin:' + password);
-  try { sessionStorage.setItem('auth', credentials); } catch (error) { /* storage off */ }
-
-  response = await send();
-  if (response.status === 401) {
-    credentials = '';
-    try { sessionStorage.removeItem('auth'); } catch (error) { /* storage off */ }
-    toast('Wrong password');
-  }
-
-  return response;
-}
-
 async function refresh() {
   try {
     const response = await fetch('/api/status', { cache: 'no-store' });
@@ -296,12 +221,101 @@ async function refresh() {
   }
 }
 
-async function loadSettings(interactive = false) {
-  const response = await authedFetch('/api/config', {}, interactive);
-  const locked = response.status === 401;
+buildCards();
+refresh();
+setInterval(refresh, 3000);
+</script>
+</body>
+</html>
+)rawliteral";
 
-  el('settingsLock').hidden = !locked;
-  el('settingsFields').hidden = locked;
+// Configuration form and the administrative actions. The page itself is behind
+// the admin password, so the browser asks once and then carries the credentials
+// on the calls this script makes.
+const char WEB_SETTINGS[] PROGMEM = R"rawliteral(<title>Settings</title>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Settings</h1>
+    <a class="pill" href="/">back to readings</a>
+  </header>
+  <p class="sub">Saving restarts the device.</p>
+
+    <form class="panel" id="settings">
+      <div class="rows">
+        <div><label for="deviceId">Device id</label><input type="text" id="deviceId" name="deviceId"></div>
+        <div><label for="wifiSsid">WiFi network</label><input type="text" id="wifiSsid" name="wifiSsid"></div>
+        <div><label for="wifiPassword">WiFi password</label><input type="password" id="wifiPassword" name="wifiPassword" placeholder="unchanged"></div>
+        <div class="check"><input type="checkbox" id="batteryEnabled" name="batteryEnabled"><label for="batteryEnabled" style="margin:0">Battery shield fitted</label></div>
+        <div><label for="batteryVoltageScale">Battery ADC scale (V)</label><input type="number" id="batteryVoltageScale" name="batteryVoltageScale" step="0.01" min="1"></div>
+        <div><label for="displayType">Display</label><select id="displayType" name="displayType">
+          <option value="sh1106_128x64">SH1106 128x64</option>
+          <option value="ssd1306_64x48">SSD1306 64x48</option>
+        </select></div>
+        <div><label for="httpPort">HTTP port</label><input type="number" id="httpPort" name="httpPort" min="1" max="65535"></div>
+        <div><label for="altitudeMeters">Station altitude (m)</label><input type="number" id="altitudeMeters" name="altitudeMeters" step="1"></div>
+        <div><label for="ntpServer">NTP server</label><input type="text" id="ntpServer" name="ntpServer"></div>
+        <div><label for="timezone">Timezone (POSIX TZ)</label><input type="text" id="timezone" name="timezone" list="timezones">
+          <datalist id="timezones">
+            <option value="CET-1CEST,M3.5.0,M10.5.0/3">Paris, Berlin, Madrid</option>
+            <option value="GMT0BST,M3.5.0/1,M10.5.0">London, Dublin, Lisbon</option>
+            <option value="EST5EDT,M3.2.0,M11.1.0">New York, Toronto</option>
+            <option value="UTC0">UTC, no daylight saving</option>
+          </datalist></div>
+        <div><label for="adminPassword">Admin password</label><input type="password" id="adminPassword" name="adminPassword" placeholder="unchanged"></div>
+        <div class="check"><input type="checkbox" id="useStaticIp" name="useStaticIp"><label for="useStaticIp" style="margin:0">Static IP address</label></div>
+        <div><label for="ip">IP address</label><input type="text" id="ip" name="ip"></div>
+        <div><label for="gateway">Gateway</label><input type="text" id="gateway" name="gateway"></div>
+        <div><label for="subnet">Subnet mask</label><input type="text" id="subnet" name="subnet"></div>
+        <div><label for="dns">DNS server</label><input type="text" id="dns" name="dns"></div>
+        <div><label for="displayBrightness">Brightness (0-255)</label><input type="number" id="displayBrightness" name="displayBrightness" min="0" max="255"></div>
+        <div><label for="displayNightBrightness">Night brightness (0 = off)</label><input type="number" id="displayNightBrightness" name="displayNightBrightness" min="0" max="255"></div>
+        <div><label for="displayNightStartHour">Night from (hour)</label><input type="number" id="displayNightStartHour" name="displayNightStartHour" min="0" max="23"></div>
+        <div><label for="displayNightEndHour">Night until (hour)</label><input type="number" id="displayNightEndHour" name="displayNightEndHour" min="0" max="23"></div>
+        <div class="check"><input type="checkbox" id="showClockPage" name="showClockPage"><label for="showClockPage" style="margin:0">Show clock page</label></div>
+        <div class="check"><input type="checkbox" id="flipDisplay" name="flipDisplay"><label for="flipDisplay" style="margin:0">Rotate display 180&deg;</label></div>
+      </div>
+      <div class="actions">
+        <button type="submit" class="primary">Save and reboot</button>
+        <button type="button" id="reload">Discard changes</button>
+      </div>
+    </form>
+
+  <section>
+    <h2>Maintenance</h2>
+    <div class="panel">
+      <div class="actions">
+        <a class="btn" href="/update">Firmware update</a>
+        <button id="calibrate">Calibrate CO2</button>
+        <button id="reboot">Reboot</button>
+      </div>
+    </div>
+  </section>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const el = id => document.getElementById(id);
+
+function toast(message) {
+  const node = el('toast');
+  node.textContent = message;
+  node.classList.add('show');
+  setTimeout(() => node.classList.remove('show'), 2600);
+}
+
+// The page is already authenticated, so a 401 here means the browser dropped
+// its cached credentials rather than a wrong password.
+async function send(url, options) {
+  const response = await fetch(url, { ...options, cache: 'no-store' });
+  if (response.status === 401) toast('Not authorised, reload the page');
+
+  return response;
+}
+
+async function loadSettings() {
+  const response = await send('/api/config');
   if (!response.ok) return;
 
   const config = await response.json();
@@ -322,32 +336,29 @@ el('settings').addEventListener('submit', async event => {
     else if (field.value !== '') payload[field.name] = field.type === 'number' ? Number(field.value) : field.value;
   }
 
-  const response = await authedFetch('/api/config', {
+  const response = await send('/api/config', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
   });
 
-  toast(response.ok ? 'Saved, rebooting...' : 'Save failed');
+  if (response.ok) toast('Saved, rebooting...');
+  else if (response.status !== 401) toast('Save failed');
 });
 
-el('reload').addEventListener('click', () => loadSettings(true));
-el('unlock').addEventListener('click', () => loadSettings(true));
+el('reload').addEventListener('click', () => loadSettings());
 
 el('reboot').addEventListener('click', async () => {
   if (!confirm('Reboot the sensor?')) return;
-  await authedFetch('/api/reboot', { method: 'POST' });
+  await send('/api/reboot', { method: 'POST' });
   toast('Rebooting...');
 });
 
 el('calibrate').addEventListener('click', async () => {
   if (!confirm('Start CO2 background calibration? The sensor must have been in fresh outdoor air for several minutes.')) return;
-  const response = await authedFetch('/api/calibrate-co2', { method: 'POST' });
-  toast(response.ok ? 'Calibration started' : 'Calibration failed');
+  const response = await send('/api/calibrate-co2', { method: 'POST' });
+  if (response.ok) toast('Calibration started');
 });
 
-buildCards();
-refresh();
 loadSettings();
-setInterval(refresh, 3000);
 </script>
 </body>
 </html>
