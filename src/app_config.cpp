@@ -109,6 +109,14 @@ namespace Config {
       if (target.httpPort == 0)
         target.httpPort = DEFAULT_HTTP_PORT;
 
+      // An empty string is valid JSON, so the fallback above would keep it and
+      // leave the clock on UTC with no daylight saving at all
+      if (target.timezone.length() == 0)
+        target.timezone = DEFAULT_TIMEZONE;
+
+      if (target.ntpServer.length() == 0)
+        target.ntpServer = DEFAULT_NTP_SERVER;
+
       // A scale of 0 would report a flat battery on a healthy cell
       if (target.batteryVoltageScale <= 0.0f)
         target.batteryVoltageScale = DEFAULT_BATTERY_VOLTAGE_SCALE;

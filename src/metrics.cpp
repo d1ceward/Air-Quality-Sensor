@@ -154,6 +154,7 @@ namespace Metrics {
     document["uptimeSeconds"] = millis() / 1000UL;
     document["freeHeap"] = ESP.getFreeHeap();
     document["time"] = NetTime::isSynced() ? NetTime::isoTimestamp() : String("");
+    document["timezone"] = NetTime::isSynced() ? NetTime::zoneAbbreviation() : String("");
 
     JsonObject network = document["network"].to<JsonObject>();
     network["connected"] = NetWifi::isConnected();

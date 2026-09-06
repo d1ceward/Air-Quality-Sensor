@@ -161,6 +161,12 @@ namespace WebUI {
       if (config.httpPort == 0)
         config.httpPort = DEFAULT_HTTP_PORT;
 
+      if (config.timezone.length() == 0)
+        config.timezone = DEFAULT_TIMEZONE;
+
+      if (config.ntpServer.length() == 0)
+        config.ntpServer = DEFAULT_NTP_SERVER;
+
       if (!Config::save()) {
         sendJson(500, F("{\"error\":\"unable to persist configuration\"}"));
         return;

@@ -124,7 +124,13 @@ button:hover, .btn:hover { border-color: var(--accent); }
         <div><label for="httpPort">HTTP port</label><input type="number" id="httpPort" name="httpPort" min="1" max="65535"></div>
         <div><label for="altitudeMeters">Station altitude (m)</label><input type="number" id="altitudeMeters" name="altitudeMeters" step="1"></div>
         <div><label for="ntpServer">NTP server</label><input type="text" id="ntpServer" name="ntpServer"></div>
-        <div><label for="timezone">Timezone (POSIX TZ)</label><input type="text" id="timezone" name="timezone"></div>
+        <div><label for="timezone">Timezone (POSIX TZ)</label><input type="text" id="timezone" name="timezone" list="timezones">
+          <datalist id="timezones">
+            <option value="CET-1CEST,M3.5.0,M10.5.0/3">Paris, Berlin, Madrid</option>
+            <option value="GMT0BST,M3.5.0/1,M10.5.0">London, Dublin, Lisbon</option>
+            <option value="EST5EDT,M3.2.0,M11.1.0">New York, Toronto</option>
+            <option value="UTC0">UTC, no daylight saving</option>
+          </datalist></div>
         <div><label for="adminPassword">Admin password</label><input type="password" id="adminPassword" name="adminPassword" placeholder="unchanged"></div>
         <div class="check"><input type="checkbox" id="useStaticIp" name="useStaticIp"><label for="useStaticIp" style="margin:0">Static IP address</label></div>
         <div><label for="ip">IP address</label><input type="text" id="ip" name="ip"></div>
@@ -205,7 +211,8 @@ function renderStatus(status) {
   link.textContent = online ? status.network.ssid + ' - ' + status.network.rssi + ' dBm'
                             : (status.network.accessPoint ? 'setup mode' : 'offline');
   link.className = 'pill ' + (online ? 'on' : 'off');
-  el('subtitle').textContent = status.network.ip + (status.time ? ' - ' + status.time.replace('T', ' ') : '');
+  const clock = status.time ? status.time.replace('T', ' ') + ' ' + (status.timezone || '') : '';
+  el('subtitle').textContent = status.network.ip + (clock ? ' - ' + clock.trim() : '');
 
   for (const card of CARDS) {
     const node = el('card-' + card.key);

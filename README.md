@@ -241,7 +241,7 @@ LittleFS partition.
 | HTTP port | `80` | |
 | Station altitude | `0` m | Used to reduce pressure to sea level |
 | NTP server | `europe.pool.ntp.org` | |
-| Timezone | `CET-1CEST,M3.5.0,M10.5.0/3` | POSIX TZ string, DST included |
+| Timezone | `CET-1CEST,M3.5.0,M10.5.0/3` | POSIX TZ string, French summer time by default |
 | Admin password | `airquality` | Settings, reboot, calibration, ArduinoOTA and `/update` |
 | Battery shield | off | Enables the A0 reading and the gauge |
 | Battery ADC scale | `4.5` V | Full scale of the divider, trim against a multimeter |
@@ -262,7 +262,11 @@ LittleFS partition.
 - SenseAir S8 responses validated with a Modbus CRC instead of scanning for a
   start byte
 - PM2.5 averaged over a sampling window instead of a single frame
-- NTP with real timezone rules, replacing the fixed `+2 h` offset
+- NTP with real timezone rules, replacing the fixed `+2 h` offset. The default
+  `CET-1CEST,M3.5.0,M10.5.0/3` is French time: CET in winter, CEST in summer,
+  switching on the last Sunday of March at 02:00 and the last Sunday of October
+  at 03:00, which the C library applies on its own. The web UI shows which of
+  the two is in force next to the clock.
 - US AQI computed with the official EPA breakpoints (values can differ by one
   index point from the original approximation)
 - Barometric pressure added with the BMP180. Its own temperature reading is only

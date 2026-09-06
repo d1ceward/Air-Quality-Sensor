@@ -67,4 +67,9 @@ namespace NetTime {
   String isoTimestamp() {
     return format("%Y-%m-%dT%H:%M:%S");
   }
+
+  // Comes from the POSIX TZ string, so it switches on its own
+  String zoneAbbreviation() {
+    return format("%Z");
+  }
 }

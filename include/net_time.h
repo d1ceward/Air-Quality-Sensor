@@ -16,4 +16,5 @@ namespace NetTime {
   String formattedWeekday();  // Mon, Tue, ...
   String formattedClock();    // HH:MM
   String isoTimestamp();      // YYYY-MM-DDTHH:MM:SS
+  String zoneAbbreviation();  // CET or CEST, whichever is in force
 }
