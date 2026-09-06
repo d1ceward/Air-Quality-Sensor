@@ -2,6 +2,7 @@
 
 // Local includes
 #include "config.h"
+#include "modbus_crc.h"
 #include "sensors/senseair_s8.h"
 
 namespace SenseAirS8 {
@@ -28,19 +29,6 @@ namespace SenseAirS8 {
 
     uint8_t response[RESPONSE_SIZE];
     uint8_t responseLength = 0;
-
-    uint16_t modbusCrc(const uint8_t *data, size_t length) {
-      uint16_t crc = 0xFFFF;
-
-      for (size_t i = 0; i < length; ++i) {
-        crc ^= data[i];
-
-        for (uint8_t bit = 0; bit < 8; ++bit)
-          crc = (crc & 1) ? static_cast<uint16_t>((crc >> 1) ^ 0xA001) : static_cast<uint16_t>(crc >> 1);
-      }
-
-      return crc;
-    }
 
     void flushInput() {
       while (serial.available())
@@ -72,7 +60,7 @@ namespace SenseAirS8 {
 
       awaitingResponse = false;
 
-      const uint16_t expectedCrc = modbusCrc(response, RESPONSE_SIZE - 2);
+      const uint16_t expectedCrc = modbusCrc16(response, RESPONSE_SIZE - 2);
       const uint16_t receivedCrc = static_cast<uint16_t>(response[6] << 8 | response[5]);
 
       if (response[0] != 0xFE || response[1] != 0x04 || response[2] != 0x02) {

@@ -41,7 +41,4 @@ namespace Sensors {
   void loop();
 
   Snapshot snapshot();
-
-  // Converts a PM2.5 concentration in ug/m3 to the US EPA air quality index.
-  uint16_t pm25ToAqiUs(uint16_t pm25);
 }

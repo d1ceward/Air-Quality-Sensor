@@ -65,7 +65,11 @@ include/
   net_wifi.h                Station mode, setup access point, mDNS
   sensors.h                 Aggregated snapshot and US AQI conversion
   sensors/bmp180.h          Barometric pressure, sea level correction
-  sensors/pms5003.h         Plantower frame parser and fan duty cycle
+  aqi.h                     US EPA index, no hardware dependency
+  barometry.h               Pressure conversions, no hardware dependency
+  modbus_crc.h              Modbus CRC16, no hardware dependency
+  sensors/pms5003.h         PMS5003 fan duty cycle and serial plumbing
+  sensors/pms_frame.h       Plantower frame parser, no hardware dependency
   sensors/senseair_s8.h     Modbus RTU client
   sensors/sgp30.h           TVOC with baseline persistence
   sensors/sht3x.h           Temperature and humidity
@@ -76,6 +80,27 @@ src/                        Matching implementations
 
 Each module owns its own state and exposes a small namespace API. `main.cpp`
 only wires them together.
+
+## Tests
+
+The protocol and conversion logic is kept free of Arduino dependencies so it can
+run on the host, in about two seconds and with no board attached:
+
+```sh
+pio test -e native
+```
+
+The environment matters: `pio test` on its own follows `default_envs`, which is
+the firmware, where these suites are ignored and nothing runs.
+
+Twenty cases cover the PMS5003 frame parser (checksum rejection, resynchro-
+nisation after garbage, payload offsets), the Modbus CRC16 against frames from
+the SenseAir S8 documentation, the EPA breakpoint table and the barometric
+conversions. Expected values come from the datasheets or from an independent
+computation, never from the implementation under test.
+
+Everything else needs the hardware: the drivers, the web server and the display
+are exercised on the device.
 
 ## Build and flash
 

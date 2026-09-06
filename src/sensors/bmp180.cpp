@@ -4,16 +4,12 @@
 
 // Local includes
 #include "app_config.h"
+#include "barometry.h"
 #include "config.h"
 #include "sensors/bmp180.h"
 
 namespace Bmp180 {
   namespace {
-    // International Standard Atmosphere reference
-    constexpr float SEA_LEVEL_PRESSURE_HPA = 1013.25f;
-    constexpr float BAROMETRIC_EXPONENT = 5.255f;
-    constexpr float BAROMETRIC_SCALE_M = 44330.0f;
-
     Adafruit_BMP085 sensor;
 
     bool available = false;
@@ -23,11 +19,6 @@ namespace Bmp180 {
 
     float pressure = 0.0f;
     float temperature = 0.0f;
-
-    // Barometric formula, same relation used in both directions
-    float pressureRatio(float altitudeMeters) {
-      return powf(1.0f - altitudeMeters / BAROMETRIC_SCALE_M, BAROMETRIC_EXPONENT);
-    }
   }
 
   bool begin() {
@@ -74,19 +65,11 @@ namespace Bmp180 {
   }
 
   float seaLevelPressureHpa() {
-    const float altitude = Config::get().altitudeMeters;
-    if (altitude == 0.0f)
-      return pressure;
-
-    return pressure / pressureRatio(altitude);
+    return Barometry::toSeaLevelHpa(pressure, Config::get().altitudeMeters);
   }
 
   float altitudeM() {
-    if (pressure <= 0.0f)
-      return 0.0f;
-
-    return BAROMETRIC_SCALE_M *
-           (1.0f - powf(pressure / SEA_LEVEL_PRESSURE_HPA, 1.0f / BAROMETRIC_EXPONENT));
+    return Barometry::toAltitudeMeters(pressure);
   }
 
   float temperatureC() {
