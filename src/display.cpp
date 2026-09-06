@@ -1,26 +1,137 @@
+#include <U8g2lib.h>
+#include <Wire.h>
+
 // Local includes
+#include "app_config.h"
 #include "config.h"
 #include "display.h"
-
-// 64x48 SSD1306 (example) - adjust if using different variant
-static U8G2_SSD1306_64X48_ER_1_HW_I2C u8g2(U8G2_R2, /* reset=*/ U8X8_PIN_NONE);
+#include "net_wifi.h"
+#include "net_time.h"
+#include "sensors.h"
 
 namespace Display {
-  void begin() {
-    u8g2.setBusClock(100000); // safe default
-    u8g2.begin();
-    String versionStr = String("v") + PROJECT_VERSION;
-    drawStrings(PROJECT_NAME, versionStr.c_str(), "Booting...");
+  namespace {
+    U8G2_SH1106_128X64_NONAME_F_HW_I2C oled(U8G2_R0, U8X8_PIN_NONE);
+
+    enum class Page : uint8_t { Sensors, Clock };
+
+    Page currentPage = Page::Sensors;
+    uint32_t pageShownMs = 0;
+
+    // Formats a value, or "--" when the sensor has no fresh reading
+    String valueOrDash(bool valid, uint16_t value) {
+      return valid ? String(value) : String("--");
+    }
+
+    void drawSensorsPage() {
+      const Sensors::Snapshot readings = Sensors::snapshot();
+
+      oled.clearBuffer();
+
+      oled.drawLine(2, 14, 126, 14);
+      oled.drawLine(41, 14, 41, 64);
+      oled.drawLine(86, 14, 86, 64);
+
+      oled.setFont(u8g2_font_t0_16_tf);
+      if (readings.hasClimate) {
+        oled.drawUTF8(2, 10, (String(readings.temperatureC, 1) + "°C").c_str());
+        oled.drawStr(96, 10, (String(static_cast<int>(readings.humidity + 0.5f)) + "%").c_str());
+      } else {
+        oled.drawStr(2, 10, "--");
+      }
+
+      // Pressure fits in the gap left between temperature and humidity
+      if (readings.hasPressure) {
+        oled.setFont(u8g2_font_5x7_tf);
+        oled.drawStr(54, 9, (String(static_cast<int>(readings.pressureHpa + 0.5f)) + "hPa").c_str());
+      }
+
+      oled.drawStr(2, 47, valueOrDash(readings.hasCo2, readings.co2Ppm).c_str());
+      oled.drawStr(46, 47, valueOrDash(readings.hasParticulate, readings.particulate.pm25).c_str());
+      oled.drawStr(91, 47, valueOrDash(readings.hasTvoc, readings.tvocPpb).c_str());
+
+      oled.setFont(u8g2_font_t0_14_tf);
+      oled.drawStr(2, 30, "CO2");
+      oled.drawStr(2, 62, "ppm");
+      oled.drawStr(46, 30, "PM2.5");
+      oled.drawUTF8(46, 62, "ug/m³");
+      oled.drawStr(91, 30, "TVOC");
+      oled.drawStr(91, 62, "ppb");
+
+      oled.sendBuffer();
+    }
+
+    void drawClockPage() {
+      oled.clearBuffer();
+      oled.setFont(u8g2_font_helvB18_tn);
+      oled.drawStr(11, 21, NetTime::formattedDate().c_str());
+      oled.setFont(u8g2_font_helvB10_tr);
+      oled.drawStr(77, 12, NetTime::formattedYear().c_str());
+      oled.drawStr(77, 26, NetTime::formattedWeekday().c_str());
+      oled.setFont(u8g2_font_helvB24_tn);
+      oled.drawStr(16, 56, NetTime::formattedClock().c_str());
+      oled.sendBuffer();
+    }
+
+    void drawSetupPage() {
+      oled.clearBuffer();
+      oled.setFont(u8g2_font_t0_14_tf);
+      oled.drawStr(2, 12, "WiFi setup");
+      oled.setFont(u8g2_font_5x7_tf);
+      oled.drawStr(2, 28, NetWifi::accessPointSsid().c_str());
+      oled.drawStr(2, 40, (String("pass ") + SETUP_AP_PASSWORD).c_str());
+      oled.drawStr(2, 56, (String("http://") + NetWifi::ipAddress()).c_str());
+      oled.sendBuffer();
+    }
+
+    // The clock slot shows the setup instructions until the device is online
+    void drawSecondaryPage() {
+      if (NetWifi::isAccessPointActive() || !NetTime::isSynced()) {
+        drawSetupPage();
+        return;
+      }
+
+      drawClockPage();
+    }
   }
 
-  void drawStrings(const String &line1, const String &line2, const String &line3) {
-    u8g2.firstPage();
+  void begin() {
+    oled.setBusClock(I2C_BUS_CLOCK_HZ);
+    oled.begin();
+    oled.setDisplayRotation(Config::get().flipDisplay ? U8G2_R2 : U8G2_R0);
+    showMessage(PROJECT_NAME, String("v") + PROJECT_VERSION, "starting...");
+  }
 
-    do {
-      u8g2.setFont(u8g2_font_5x7_tf);
-      u8g2.drawStr(1, 8, line1.c_str());
-      u8g2.drawStr(1, 16, line2.c_str());
-      u8g2.drawStr(1, 24, line3.c_str());
-    } while (u8g2.nextPage());
+  void loop() {
+    const bool clockEnabled = Config::get().showClockPage;
+    const uint32_t pageDuration =
+      currentPage == Page::Sensors ? DISPLAY_SENSORS_PAGE_MS : DISPLAY_CLOCK_PAGE_MS;
+
+    if (pageShownMs != 0 && millis() - pageShownMs < pageDuration)
+      return;
+
+    pageShownMs = millis();
+
+    if (currentPage == Page::Sensors && clockEnabled) {
+      currentPage = Page::Clock;
+      drawSecondaryPage();
+      return;
+    }
+
+    currentPage = Page::Sensors;
+    drawSensorsPage();
+  }
+
+  void showMessage(const String &line1, const String &line2, const String &line3) {
+    oled.clearBuffer();
+    oled.setFont(u8g2_font_t0_16_tf);
+    oled.drawUTF8(1, 16, line1.c_str());
+    oled.drawUTF8(1, 36, line2.c_str());
+    oled.drawUTF8(1, 56, line3.c_str());
+    oled.sendBuffer();
+
+    // Keep the message visible for at least one page duration
+    pageShownMs = millis();
+    currentPage = Page::Sensors;
   }
 }
