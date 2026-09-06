@@ -1,43 +1,54 @@
 #include <Arduino.h>
 #include <ESP8266WebServer.h>
-#include <EEPROM.h>
+#include <memory>
 
 // Local includes
+#include "app_config.h"
 #include "config.h"
-#include "sensor_serial.h"
 #include "display.h"
-#include "sensor_wifi.h"
+#include "metrics.h"
+#include "net_ota.h"
+#include "net_time.h"
+#include "net_wifi.h"
+#include "sensors.h"
 #include "webui.h"
 
-// Timing variables
-unsigned long lastUpdate = 0;
+// The listening port comes from the runtime configuration, so the server is
+// built once the configuration has been loaded.
+static std::unique_ptr<ESP8266WebServer> server;
 
-// Create web server instance
-ESP8266WebServer server(80);
-
-void initializeWiFi() {
-  SensorWifi::loadConfig();
-  const char* ssid = SensorWifi::getSSID();
-
-  if (strlen(ssid) == 0 || strcmp(ssid, WIFI_SSID) == 0) {
-    Serial.println("No WiFi config found, starting in AP mode for setup...");
-    SensorWifi::startAPMode();
-  } else {
-    Serial.println("WiFi config found, starting in STA mode...");
-    SensorWifi::connect(ssid, SensorWifi::getPASS());
-  }
+static void printBanner() {
+  Serial.println();
+  Serial.printf("%s %s\n", PROJECT_NAME, PROJECT_VERSION);
+  Serial.printf("chip %06x, flash %u KiB, core %s\n",
+                ESP.getChipId(), ESP.getFlashChipRealSize() / 1024, ESP.getCoreVersion().c_str());
 }
 
 void setup() {
-  SensorSerial::initializeSerial();
-  Display::begin();
-  initializeWiFi();
+  Serial.begin(SERIAL_BAUD_RATE);
+  printBanner();
 
-  setupWebUI(server);
-  server.begin();
-  Serial.println("Web server started.");
+  Config::begin();
+  Display::begin();
+  Sensors::begin();
+
+  NetWifi::begin();
+  NetTime::begin();
+
+  server.reset(new ESP8266WebServer(Config::get().httpPort));
+  NetOta::begin(*server);
+  WebUI::begin(*server);
 }
 
 void loop() {
-  server.handleClient();
+  NetOta::loop();
+
+  // Nothing else must touch the bus or the display during a firmware upload
+  if (NetOta::isUpdating())
+    return;
+
+  NetWifi::loop();
+  WebUI::loop();
+  Sensors::loop();
+  Display::loop();
 }

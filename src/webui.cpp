@@ -1,79 +1,164 @@
+#include <ArduinoJson.h>
 #include <ESP8266WebServer.h>
 
 // Local includes
+#include "app_config.h"
 #include "config.h"
-#include "sensor_wifi.h"
+#include "metrics.h"
+#include "net_wifi.h"
+#include "sensors.h"
+#include "web_page.h"
 #include "webui.h"
 
-extern ESP8266WebServer server;
+namespace WebUI {
+  namespace {
+    ESP8266WebServer *httpServer = nullptr;
+    uint32_t rebootAtMs = 0;
 
-String getSystemInfoHtml() {
-  String html;
-  html += "<h2>ESP8266 System Info</h2>";
-  html += "<ul>";
-  html += "<li>Chip ID: " + String(ESP.getChipId()) + "</li>";
-  html += "<li>Flash Chip ID: " + String(ESP.getFlashChipId()) + "</li>";
-  html += "<li>CPU Freq: " + String(ESP.getCpuFreqMHz()) + " MHz</li>";
-  html += "<li>Free Heap: " + String(ESP.getFreeHeap()) + " bytes</li>";
-  html += "<li>Uptime: " + String(millis() / 1000) + " s</li>";
-  html += "<li>SDK Version: " + String(ESP.getSdkVersion()) + "</li>";
-  html += "<li>Core Version: " + String(ESP.getCoreVersion()) + "</li>";
-  html += "</ul>";
-  return html;
-}
+    void scheduleReboot(uint32_t delayMs = 500U) {
+      rebootAtMs = millis() + delayMs;
+    }
 
-String getWiFiInfoHtml() {
-  String html;
-  html += "<h2>WiFi Info</h2>";
-  html += "<ul>";
-  html += "<li>Mode: " + String(WiFi.getMode() == WIFI_AP ? "Access Point (AP)" : "Station (STA)") + "</li>";
-  html += "<li>SSID: " + String(WiFi.SSID()) + "</li>";
-  html += "<li>IP: " + WiFi.localIP().toString() + "</li>";
-  html += "<li>MAC: " + WiFi.macAddress() + "</li>";
-  html += "<li>RSSI: " + String(WiFi.RSSI()) + " dBm</li>";
-  html += "</ul>";
-  return html;
-}
+    void sendJson(int code, const String &payload) {
+      httpServer->send(code, F("application/json"), payload);
+    }
 
-void handleRoot() {
-  String html = "<html><head><title>Air Quality Sensor</title></head><body>";
-  html += "<h1>Air Quality Sensor Web UI</h1>";
-  html += getSystemInfoHtml();
-  html += getWiFiInfoHtml();
-  html += "<a href='/config'>WiFi Configuration</a>";
-  html += "</body></html>";
-  server.send(200, "text/html", html);
-}
+    void handleRoot() {
+      httpServer->send_P(200, PSTR("text/html; charset=utf-8"), WEB_PAGE);
+    }
 
-void handleConfigForm() {
-  String html = "<html><head><title>WiFi Config</title></head><body>";
-  html += "<h1>WiFi Configuration</h1>";
-  html += "<form method='POST' action='/config'>";
-  html += "SSID: <input name='ssid' value='" + String(SensorWifi::getSSID()) + "'><br>";
-  html += "Password: <input name='pass' type='password' value='" + String(SensorWifi::getPASS()) + "'><br>";
-  html += "<input type='submit' value='Save'>";
-  html += "</form>";
-  html += "<a href='/'>Back</a>";
-  html += "</body></html>";
-  server.send(200, "text/html", html);
-}
+    void handleMetrics() {
+      Metrics::sendPrometheus(*httpServer);
+    }
 
-void handleConfigPost() {
-  if (server.hasArg("ssid") && server.hasArg("pass")) {
-    String ssid = server.arg("ssid");
-    String pass = server.arg("pass");
-    SensorWifi::saveConfig(ssid.c_str(), pass.c_str());
-    server.send(200, "text/html", "<html><body><h1>WiFi credentials saved!<br>Rebooting and switching to Station mode...</h1></body></html>");
-    delay(1000);
-    SensorWifi::applyWiFiConfigFromWebUI(ssid.c_str(), pass.c_str());
-    ESP.restart();
-    return;
+    void handleStatus() {
+      sendJson(200, Metrics::toJson());
+    }
+
+    void handleGetConfig() {
+      const AppConfig &config = Config::get();
+
+      JsonDocument document;
+      document["deviceId"] = config.deviceId;
+      document["wifiSsid"] = config.wifiSsid;
+      document["useStaticIp"] = config.useStaticIp;
+      document["ip"] = config.ip.toString();
+      document["gateway"] = config.gateway.toString();
+      document["subnet"] = config.subnet.toString();
+      document["dns"] = config.dns.toString();
+      document["httpPort"] = config.httpPort;
+      document["ntpServer"] = config.ntpServer;
+      document["timezone"] = config.timezone;
+      document["altitudeMeters"] = config.altitudeMeters;
+      document["showClockPage"] = config.showClockPage;
+      document["flipDisplay"] = config.flipDisplay;
+      // Secrets are never sent back; empty fields mean "keep the current value"
+      document["wifiPassword"] = "";
+      document["otaPassword"] = "";
+
+      String payload;
+      serializeJson(document, payload);
+      sendJson(200, payload);
+    }
+
+    // Assigns an IP field only when the submitted value parses
+    void assignIp(JsonDocument &document, const char *key, IPAddress &target) {
+      const char *value = document[key];
+      if (value == nullptr)
+        return;
+
+      IPAddress parsed;
+      if (parsed.fromString(value))
+        target = parsed;
+    }
+
+    void handlePostConfig() {
+      JsonDocument document;
+      const DeserializationError error = deserializeJson(document, httpServer->arg("plain"));
+
+      if (error) {
+        sendJson(400, F("{\"error\":\"invalid JSON body\"}"));
+        return;
+      }
+
+      AppConfig &config = Config::get();
+
+      config.deviceId = document["deviceId"] | config.deviceId;
+      config.wifiSsid = document["wifiSsid"] | config.wifiSsid;
+      config.useStaticIp = document["useStaticIp"] | config.useStaticIp;
+      config.httpPort = document["httpPort"] | config.httpPort;
+      config.ntpServer = document["ntpServer"] | config.ntpServer;
+      config.timezone = document["timezone"] | config.timezone;
+      config.altitudeMeters = document["altitudeMeters"] | config.altitudeMeters;
+      config.showClockPage = document["showClockPage"] | config.showClockPage;
+      config.flipDisplay = document["flipDisplay"] | config.flipDisplay;
+
+      assignIp(document, "ip", config.ip);
+      assignIp(document, "gateway", config.gateway);
+      assignIp(document, "subnet", config.subnet);
+      assignIp(document, "dns", config.dns);
+
+      // Empty password fields keep the stored secrets
+      const char *wifiPassword = document["wifiPassword"];
+      if (wifiPassword != nullptr && strlen(wifiPassword) > 0)
+        config.wifiPassword = wifiPassword;
+
+      const char *otaPassword = document["otaPassword"];
+      if (otaPassword != nullptr && strlen(otaPassword) > 0)
+        config.otaPassword = otaPassword;
+
+      if (config.httpPort == 0)
+        config.httpPort = DEFAULT_HTTP_PORT;
+
+      if (!Config::save()) {
+        sendJson(500, F("{\"error\":\"unable to persist configuration\"}"));
+        return;
+      }
+
+      sendJson(200, F("{\"status\":\"saved\",\"rebooting\":true}"));
+      scheduleReboot(1000U);
+    }
+
+    void handleReboot() {
+      sendJson(200, F("{\"status\":\"rebooting\"}"));
+      scheduleReboot();
+    }
+
+    void handleCalibrateCo2() {
+      const bool started = SenseAirS8::calibrate();
+      sendJson(started ? 200 : 500,
+               started ? F("{\"status\":\"calibration started\"}")
+                       : F("{\"error\":\"calibration request failed\"}"));
+    }
+
+    void handleNotFound() {
+      httpServer->send(404, F("text/plain"), F("Not found\n"));
+    }
   }
-  server.send(400, "text/html", "<html><body><h1>Missing SSID or Password</h1><a href='/config'>Back</a></body></html>");
-}
 
-void setupWebUI(ESP8266WebServer& serverRef) {
-  serverRef.on("/", HTTP_GET, handleRoot);
-  serverRef.on("/config", HTTP_GET, handleConfigForm);
-  serverRef.on("/config", HTTP_POST, handleConfigPost);
+  void begin(ESP8266WebServer &server) {
+    httpServer = &server;
+
+    server.on("/", HTTP_GET, handleRoot);
+    server.on("/metrics", HTTP_GET, handleMetrics);
+    server.on("/api/status", HTTP_GET, handleStatus);
+    server.on("/api/config", HTTP_GET, handleGetConfig);
+    server.on("/api/config", HTTP_POST, handlePostConfig);
+    server.on("/api/reboot", HTTP_POST, handleReboot);
+    server.on("/api/calibrate-co2", HTTP_POST, handleCalibrateCo2);
+    server.onNotFound(handleNotFound);
+
+    server.begin();
+    Serial.printf("[http] listening on port %u\n", Config::get().httpPort);
+  }
+
+  void loop() {
+    if (httpServer != nullptr)
+      httpServer->handleClient();
+
+    if (rebootAtMs != 0 && millis() >= rebootAtMs) {
+      Serial.println(F("[http] rebooting on request"));
+      ESP.restart();
+    }
+  }
 }
