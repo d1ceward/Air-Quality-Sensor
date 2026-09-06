@@ -35,11 +35,27 @@ namespace SenseAirS8 {
         serial.read();
     }
 
+    // Without the bytes themselves, a failure cannot be told apart from silence
+    void reportFailure(const __FlashStringHelper *reason) {
+      // print() knows how to walk a flash string; printf("%s") would read it
+      // with unaligned accesses and fault.
+      Serial.print(F("[co2] "));
+      Serial.print(reason);
+      Serial.printf(" (%u/%u bytes:", responseLength, RESPONSE_SIZE);
+
+      for (uint8_t i = 0; i < responseLength; ++i)
+        Serial.printf(" %02X", response[i]);
+
+      Serial.println(")");
+    }
+
     void sendRequest() {
       flushInput();
       responseLength = 0;
+      // write() blocks until the last stop bit, and flush() must not be called
+      // here: on EspSoftwareSerial it discards the receive buffer rather than
+      // draining the transmit one, which can eat the start of the answer.
       serial.write(COMMAND_READ_CO2, sizeof(COMMAND_READ_CO2));
-      serial.flush();
       requestSentMs = millis();
       lastRequestMs = requestSentMs;
       awaitingResponse = true;
@@ -51,7 +67,7 @@ namespace SenseAirS8 {
 
       if (responseLength < RESPONSE_SIZE) {
         if (millis() - requestSentMs >= RESPONSE_TIMEOUT_MS) {
-          Serial.println(F("[co2] response timeout"));
+          reportFailure(F("response timeout"));
           awaitingResponse = false;
         }
 
@@ -64,16 +80,21 @@ namespace SenseAirS8 {
       const uint16_t receivedCrc = static_cast<uint16_t>(response[6] << 8 | response[5]);
 
       if (response[0] != 0xFE || response[1] != 0x04 || response[2] != 0x02) {
-        Serial.println(F("[co2] unexpected response header"));
+        reportFailure(F("unexpected response header"));
         return;
       }
 
       if (expectedCrc != receivedCrc) {
-        Serial.println(F("[co2] CRC mismatch"));
+        reportFailure(F("CRC mismatch"));
         return;
       }
 
       lastCo2 = static_cast<uint16_t>(response[3] << 8 | response[4]);
+
+      // The first valid answer confirms the wiring, the rest stays quiet
+      if (!hasCo2)
+        Serial.printf("[co2] sensor answering, %u ppm\n", lastCo2);
+
       hasCo2 = true;
       lastCo2Ms = millis();
     }
@@ -114,12 +135,10 @@ namespace SenseAirS8 {
 
     // The sensor expects the acknowledgement flags to be cleared first
     serial.write(COMMAND_CLEAR_ACK, sizeof(COMMAND_CLEAR_ACK));
-    serial.flush();
     delay(50);
     flushInput();
 
     const size_t written = serial.write(COMMAND_CALIBRATE, sizeof(COMMAND_CALIBRATE));
-    serial.flush();
     Serial.println(F("[co2] background calibration requested"));
 
     return written == sizeof(COMMAND_CALIBRATE);
