@@ -87,16 +87,3 @@ constexpr uint32_t WIFI_RETRY_INTERVAL_MS = 30000U;
 
 // Configuration file on the LittleFS partition
 constexpr char CONFIG_PATH[] = "/config.json";
-
-// ---------------------------------------------------------------------------
-// Legacy constants, still referenced by the modules that are about to be
-// replaced. Removed once the new modules are wired into main.cpp.
-// ---------------------------------------------------------------------------
-
-constexpr uint16_t SERIAL_CONNECT_DELAY_MS = 1000U;
-constexpr uint16_t EEPROM_SIZE = 128;
-constexpr char WIFI_SSID[] = "";
-constexpr char WIFI_PASSWORD[] = "";
-constexpr char WIFI_HOSTNAME[] = "AQ Sensor";
-constexpr uint8_t MAX_WIFI_ATTEMPTS = 30U;
-constexpr uint16_t WIFI_RETRY_DELAY_MS = 500U;
