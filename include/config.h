@@ -66,6 +66,10 @@ constexpr uint32_t SGP30_BASELINE_MAX_AGE_S = 7U * 24U * 3600U; // 1 week
 // Display
 // ---------------------------------------------------------------------------
 
+// Supported panels, selected at runtime through the configuration
+constexpr char DISPLAY_TYPE_SH1106_128X64[] = "sh1106_128x64";
+constexpr char DISPLAY_TYPE_SSD1306_64X48[] = "ssd1306_64x48";
+
 constexpr uint32_t DISPLAY_SENSORS_PAGE_MS = 6000U;
 constexpr uint32_t DISPLAY_CLOCK_PAGE_MS = 4000U;
 

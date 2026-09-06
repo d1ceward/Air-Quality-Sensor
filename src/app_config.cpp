@@ -25,6 +25,11 @@ namespace Config {
       target.otaPassword = DEFAULT_OTA_PASSWORD;
       target.ntpServer = DEFAULT_NTP_SERVER;
       target.timezone = DEFAULT_TIMEZONE;
+      target.displayType = DISPLAY_TYPE_SH1106_128X64;
+    }
+
+    bool isSupportedDisplay(const String &value) {
+      return value == DISPLAY_TYPE_SH1106_128X64 || value == DISPLAY_TYPE_SSD1306_64X48;
     }
 
     IPAddress parseIp(const char *value) {
@@ -49,6 +54,7 @@ namespace Config {
       document["ntpServer"] = source.ntpServer;
       document["timezone"] = source.timezone;
       document["altitudeMeters"] = source.altitudeMeters;
+      document["displayType"] = source.displayType;
       document["showClockPage"] = source.showClockPage;
       document["flipDisplay"] = source.flipDisplay;
       document["sgpBaselineCo2"] = source.sgpBaselineCo2;
@@ -70,6 +76,7 @@ namespace Config {
       target.ntpServer = document["ntpServer"] | target.ntpServer;
       target.timezone = document["timezone"] | target.timezone;
       target.altitudeMeters = document["altitudeMeters"] | target.altitudeMeters;
+      target.displayType = document["displayType"] | target.displayType;
       target.showClockPage = document["showClockPage"] | target.showClockPage;
       target.flipDisplay = document["flipDisplay"] | target.flipDisplay;
       target.sgpBaselineCo2 = document["sgpBaselineCo2"] | target.sgpBaselineCo2;
@@ -79,6 +86,13 @@ namespace Config {
       // A port of 0 would make the web server unreachable
       if (target.httpPort == 0)
         target.httpPort = DEFAULT_HTTP_PORT;
+
+      // An unknown panel would leave the device without a usable display
+      if (!isSupportedDisplay(target.displayType)) {
+        Serial.printf("[config] unknown display \"%s\", falling back to %s\n",
+                      target.displayType.c_str(), DISPLAY_TYPE_SH1106_128X64);
+        target.displayType = DISPLAY_TYPE_SH1106_128X64;
+      }
     }
   }
 

@@ -50,6 +50,7 @@ namespace WebUI {
       document["ntpServer"] = config.ntpServer;
       document["timezone"] = config.timezone;
       document["altitudeMeters"] = config.altitudeMeters;
+      document["displayType"] = config.displayType;
       document["showClockPage"] = config.showClockPage;
       document["flipDisplay"] = config.flipDisplay;
       // Secrets are never sent back; empty fields mean "keep the current value"
@@ -91,6 +92,12 @@ namespace WebUI {
       config.timezone = document["timezone"] | config.timezone;
       config.altitudeMeters = document["altitudeMeters"] | config.altitudeMeters;
       config.showClockPage = document["showClockPage"] | config.showClockPage;
+
+      const char *displayType = document["displayType"];
+      if (displayType != nullptr &&
+          (strcmp(displayType, DISPLAY_TYPE_SH1106_128X64) == 0 ||
+           strcmp(displayType, DISPLAY_TYPE_SSD1306_64X48) == 0))
+        config.displayType = displayType;
       config.flipDisplay = document["flipDisplay"] | config.flipDisplay;
 
       assignIp(document, "ip", config.ip);

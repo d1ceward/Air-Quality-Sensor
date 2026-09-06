@@ -24,6 +24,7 @@ struct AppConfig {
   // Station altitude in meters, used to derive sea level pressure
   float altitudeMeters = 0.0f;
 
+  String displayType;   // one of the DISPLAY_TYPE_* identifiers
   bool showClockPage = true;
   bool flipDisplay = false;  // true = rotate 180 deg (display mounted top left)
 

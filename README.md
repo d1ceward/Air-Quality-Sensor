@@ -1,68 +1,182 @@
-# Air Quality Sensor (ESP8266 D1 Mini)
+# Air Quality Sensor
 
-Modularized PlatformIO project for an Air Quality Sensor using a D1 Mini (ESP8266) and an SSD1306 64x48 OLED.
+Firmware for an ESP8266 based air quality station (AirGradient DIY PRO hardware),
+exposing its readings as Prometheus metrics.
 
-## Project Structure
+Rewritten from the original single-file Arduino sketch
+([original_arduino_software.c](original_arduino_software.c)) as a modular
+PlatformIO project, with no dependency on the AirGradient library: every sensor
+protocol is implemented locally.
+
+## Features
+
+- Prometheus metrics on `/metrics`, metric names unchanged from the original firmware
+- Web UI with live readings, device information and full configuration
+- OTA updates, both from PlatformIO over the network and from a browser
+- WiFi provisioning through a fallback access point, no credentials in the source
+- Configuration stored as JSON on LittleFS, editable without reflashing
+- NTP time with POSIX timezone rules, so DST is handled automatically
+- SGP30 baseline persistence and humidity compensation
+- Barometric pressure reduced to sea level from a configurable station altitude
+- SenseAir S8 readings validated with a Modbus CRC, manual calibration from the UI
+
+## Hardware
+
+| Sensor | Measures | Bus | Pins |
+| --- | --- | --- | --- |
+| Plantower PMS5003 | PM1.0 / PM2.5 / PM10, particle counts | UART 9600 | D5 (RX), D6 (TX) |
+| SenseAir S8 | CO2 | Modbus RTU 9600 | D4 (RX), D3 (TX) |
+| Sensirion SHT3x | temperature, humidity | I2C `0x44` | D1 (SCL), D2 (SDA) |
+| Sensirion SGP30 | TVOC, eCO2 | I2C `0x58` | D1 (SCL), D2 (SDA) |
+| Bosch BMP180 (GY-68) | barometric pressure, altitude | I2C `0x77` | D1 (SCL), D2 (SDA) |
+| SH1106 OLED 128x64 | display | I2C `0x3C` | D1 (SCL), D2 (SDA) |
+| SSD1306 OLED 64x48 | display, smaller board | I2C `0x3C` | D1 (SCL), D2 (SDA) |
+
+The pin map lives in [include/config.h](include/config.h).
+
+### Two boards, one firmware
+
+The same image runs on the full board and on the smaller one, which carries only
+the SenseAir S8, the PMS5003, an SHT3x and a 64x48 display. Nothing has to be
+declared: the SGP30 and the BMP180 fail their I2C probe, their metrics are
+omitted and their cards disappear from the web UI. Both boards wire the two
+serial sensors to the same pins.
+
+The panel is the only thing that cannot be detected, so it is a setting. Pick it
+under Display in the web UI, or set `displayType` in `/config.json` to
+`sh1106_128x64` or `ssd1306_64x48`.
+
+The 64x48 layout shows CO2, PM2.5, temperature and humidity. It has no room for
+TVOC or pressure, so a full sensor board paired with the small panel would only
+report those two through the web UI and the metrics.
+
+## Project structure
+
 ```
-├─ platformio.ini          # Build configuration (environments, flags, libs)
-├─ src/
-│  ├─ main.cpp             # Application entry point (high-level orchestration)
-│  └─ display.cpp          # Display abstraction implementation
-├─ include/
-│  ├─ config.h             # Global compile-time configuration/constants
-│  └─ display.h            # Display abstraction interface
-├─ lib/                    # (Optional) External custom libraries you create
-├─ test/                   # Unit / integration tests (future)
-└─ README.md
+platformio.ini              Build environments (serial and OTA upload)
+include/
+  config.h                  Compile-time configuration: pins, intervals, defaults
+  app_config.h              Runtime configuration structure
+  display.h                 Page rotation, panel selected at boot
+  display_pages.h           One renderer per panel geometry
+  metrics.h                 Prometheus and JSON serialisation
+  net_ota.h                 ArduinoOTA and browser firmware upload
+  net_time.h                SNTP and timezone handling
+  net_wifi.h                Station mode, setup access point, mDNS
+  sensors.h                 Aggregated snapshot and US AQI conversion
+  sensors/bmp180.h          Barometric pressure, sea level correction
+  sensors/pms5003.h         Plantower frame parser and fan duty cycle
+  sensors/senseair_s8.h     Modbus RTU client
+  sensors/sgp30.h           TVOC with baseline persistence
+  sensors/sht3x.h           Temperature and humidity
+  web_page.h                Web UI, embedded in flash
+  webui.h                   HTTP routes
+src/                        Matching implementations
 ```
 
-## Design Principles
-- Separation of concerns: `main.cpp` orchestrates, modules do the work.
-- Config centralization via `config.h`.
-- Display isolated behind a small namespace API (`Display::showStatus`).
-- Strict compiler warnings enabled (`-Wall -Wextra`) to catch issues early.
-- Ready for expansion: add sensor modules (`sensors/air.cpp`, `wifi/manager.cpp`, etc.).
+Each module owns its own state and exposes a small namespace API. `main.cpp`
+only wires them together.
 
-## Adding Sensors
-Create a header in `include/` (e.g., `sensor_air.h`) and a source file in `src/` implementing:
-```
-namespace Sensors {
-  void begin();
-  void loop();
-  float temperatureC();
-  float humidity();
-  // etc.
-}
-```
-Call `Sensors::begin()` in `setup()` and `Sensors::loop()` in `loop()`. Query readings when updating the display.
+## Build and flash
 
-## Testing
-You can add a native (host) test environment by uncommenting the `env:native` block in `platformio.ini` and placing test files in `test/` using Unity test framework:
-```
-#include <unity.h>
-void test_example() { TEST_ASSERT_EQUAL(4, 2+2); }
-void setup() { UNITY_BEGIN(); RUN_TEST(test_example); UNITY_END(); }
-void loop() {}
-```
-Flash builds exclude test code by default; tests run in their own environment.
-
-## Build & Upload
-From the project directory:
-```
-# Build
-pio run
-# Upload firmware
+```sh
+# First flash, over USB
 pio run -t upload
-# Open monitor
-pio device monitor -b 115200
+
+# Serial monitor
+pio device monitor
+
+# Later updates, over the network
+pio run -e d1_mini_ota -t upload
 ```
 
-## Next Steps / Suggestions
-- Implement sensor modules for SHT and AirGradient sensors.
-- Add WiFi provisioning with WiFiManager, then NTP time sync.
-- Create a ring buffer for historical air quality metrics.
-- Add OTA update support (ArduinoOTA / ESP8266HTTPUpdateServer).
-- Add unit tests for pure logic (parsing, formatting, averaging).
+Adjust `upload_port` and `--auth` in the `[env:d1_mini_ota]` section of
+[platformio.ini](platformio.ini) to match the device address and its OTA
+password.
 
-## License
-Specify your license here (e.g., MIT, Apache-2.0).
+## First boot
+
+With no WiFi credentials stored, the device starts an access point named
+`air-quality-setup-<chipid>` with the password `airquality`, and shows it on the
+display. Connect to it, open `http://192.168.4.1:9926/`, fill in the WiFi
+settings and save: the device reboots and joins the network.
+
+Afterwards the UI is reachable at `http://<ip>:9926/` or
+`http://air-quality-<chipid>.local:9926/`.
+
+## HTTP endpoints
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/` | Web UI |
+| GET | `/metrics` | Prometheus exposition |
+| GET | `/api/status` | Readings and device state, JSON |
+| GET | `/api/config` | Current configuration, secrets redacted |
+| POST | `/api/config` | Update configuration, then reboot |
+| POST | `/api/reboot` | Reboot |
+| POST | `/api/calibrate-co2` | Start SenseAir S8 background calibration |
+| GET, POST | `/update` | Firmware upload form, HTTP basic auth `admin` |
+
+## Prometheus
+
+```yaml
+scrape_configs:
+  - job_name: air_quality
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['192.168.1.2:9926']
+```
+
+The original firmware also answered on `/`; that path now serves the web UI, so
+a scrape configuration pointing at `/` must be updated to `/metrics`.
+
+Metrics `tvoc`, `co2`, `pm25`, `aqius`, `temp` and `hum` keep their original
+names and their `id` and `mac` labels. Added: `pm1`, `pm10`, `eco2`,
+`particle_count_03`, `particle_count_25`, `pressure`, `pressure_sea_level`,
+`altitude`, `wifi_rssi`, `uptime_seconds` and `heap_free_bytes`.
+
+Pressure is exported in hPa. `pressure` is what the sensor measures,
+`pressure_sea_level` is that value reduced to sea level using the configured
+station altitude, which is the figure comparable to weather forecasts.
+`altitude` is derived from the standard atmosphere (1013.25 hPa) and drifts with
+the weather, so it is a rough indication rather than a position.
+
+A metric is omitted while its sensor has no fresh reading, instead of reporting
+a misleading zero. The PMS5003 fan is duty cycled to preserve its laser and its
+fan, so `pm25` is refreshed once per cycle, about every six minutes.
+
+## Configuration
+
+Everything below is editable from the web UI and stored in `/config.json` on the
+LittleFS partition.
+
+| Setting | Default | Notes |
+| --- | --- | --- |
+| Device id | `air-quality-<chipid>` | Prometheus `id` label, hostname and mDNS name |
+| WiFi network, password | empty | Empty password field keeps the stored one |
+| Static IP | off | Address, gateway, subnet and DNS |
+| HTTP port | `9926` | |
+| Station altitude | `0` m | Used to reduce pressure to sea level |
+| NTP server | `europe.pool.ntp.org` | |
+| Timezone | `CET-1CEST,M3.5.0,M10.5.0/3` | POSIX TZ string, DST included |
+| OTA password | `airquality` | Used by ArduinoOTA and `/update` |
+| Display | `sh1106_128x64` | Or `ssd1306_64x48` for the smaller board |
+| Clock page | on | Alternate the display with date and time |
+| Rotate display | off | For a display mounted the other way up |
+
+## Differences from the original sketch
+
+- No AirGradient library: the PMS5003 frame parser, the SenseAir S8 Modbus
+  client and the sensor scheduling are implemented in this repository
+- Credentials and network settings moved out of the source into `/config.json`
+- SGP30 sampled at 1 Hz as its baseline algorithm requires, with the baseline
+  saved hourly and restored on boot
+- SenseAir S8 responses validated with a Modbus CRC instead of scanning for a
+  start byte
+- PM2.5 averaged over a sampling window instead of a single frame
+- NTP with real timezone rules, replacing the fixed `+2 h` offset
+- US AQI computed with the official EPA breakpoints (values can differ by one
+  index point from the original approximation)
+- Barometric pressure added with the BMP180. Its own temperature reading is only
+  exposed on `/api/status` for diagnostics: the die self-heats, so the SHT3x
+  remains the source of the `temp` metric

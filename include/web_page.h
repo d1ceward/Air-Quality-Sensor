@@ -59,7 +59,7 @@ h2 { font-size: 15px; font-weight: 600; margin: 0 0 12px; }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
 .rows { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-input[type=text], input[type=password], input[type=number] {
+input[type=text], input[type=password], input[type=number], select {
   width: 100%; padding: 7px 9px; border-radius: 6px; border: 1px solid var(--line);
   background: var(--bg); color: var(--text); font: inherit; font-size: 14px;
 }
@@ -111,6 +111,10 @@ button:hover, .btn:hover { border-color: var(--accent); }
         <div><label for="deviceId">Device id</label><input type="text" id="deviceId" name="deviceId"></div>
         <div><label for="wifiSsid">WiFi network</label><input type="text" id="wifiSsid" name="wifiSsid"></div>
         <div><label for="wifiPassword">WiFi password</label><input type="password" id="wifiPassword" name="wifiPassword" placeholder="unchanged"></div>
+        <div><label for="displayType">Display</label><select id="displayType" name="displayType">
+          <option value="sh1106_128x64">SH1106 128x64</option>
+          <option value="ssd1306_64x48">SSD1306 64x48</option>
+        </select></div>
         <div><label for="httpPort">HTTP port</label><input type="number" id="httpPort" name="httpPort" min="1" max="65535"></div>
         <div><label for="altitudeMeters">Station altitude (m)</label><input type="number" id="altitudeMeters" name="altitudeMeters" step="1"></div>
         <div><label for="ntpServer">NTP server</label><input type="text" id="ntpServer" name="ntpServer"></div>
