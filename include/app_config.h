@@ -29,6 +29,12 @@ struct AppConfig {
   float batteryVoltageScale = 0.0f;
 
   String displayType;   // one of the DISPLAY_TYPE_* identifiers
+
+  // Panel contrast, and the window where it drops. Equal hours disable it.
+  uint8_t displayBrightness = 0;
+  uint8_t displayNightBrightness = 0;
+  uint8_t displayNightStartHour = 0;
+  uint8_t displayNightEndHour = 0;
   bool showClockPage = true;
   bool flipDisplay = false;  // true = rotate 180 deg (display mounted top left)
 

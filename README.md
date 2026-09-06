@@ -57,6 +57,20 @@ or the board will brown out and reboot.
 A percentage under load reads low: a LiPo sags by 50 to 100 mV at this current,
 and the curve is steep in that region.
 
+### Night dimming
+
+The panel contrast drops inside a configurable window, 22:00 to 07:00 by
+default. A night brightness of 0 switches the panel off entirely rather than
+drawing a black page, which an OLED still lights faintly and still ages. That
+matters here: the layout is static and shown around the clock, so a dimmer night
+also buys screen life.
+
+The window is half open, `[from, until)`: with 22 and 7, hour 22 is dim and hour
+7 is bright again. Setting both hours to the same value turns the feature off.
+
+Until SNTP has answered the hour is unknown, and the display stays at full
+brightness rather than risk blanking itself for good.
+
 ### Two boards, one firmware
 
 The same image runs on the full board and on the smaller one, which carries only
@@ -82,6 +96,7 @@ include/
   app_config.h              Runtime configuration structure
   display.h                 Page rotation, panel selected at boot
   display_pages.h           One renderer per panel geometry
+  display_schedule.h        Night window, no hardware dependency
   metrics.h                 Prometheus and JSON serialisation
   net_ota.h                 ArduinoOTA and browser firmware upload
   net_time.h                SNTP and timezone handling
@@ -118,10 +133,11 @@ pio test -e native
 The environment matters: `pio test` on its own follows `default_envs`, which is
 the firmware, where these suites are ignored and nothing runs.
 
-Twenty six cases cover the PMS5003 frame parser (checksum rejection, resynchro-
+Thirty two cases cover the PMS5003 frame parser (checksum rejection, resynchro-
 nisation after garbage, payload offsets), the Modbus CRC16 against frames from
 the SenseAir S8 documentation, the EPA breakpoint table, the barometric
-conversions and the LiPo discharge curve. Expected values come from the datasheets or from an independent
+conversions, the LiPo discharge curve and the night window, midnight wrap
+included. Expected values come from the datasheets or from an independent
 computation, never from the implementation under test.
 
 Everything else needs the hardware: the drivers, the web server and the display
@@ -214,6 +230,9 @@ LittleFS partition.
 | Battery shield | off | Enables the A0 reading and the gauge |
 | Battery ADC scale | `4.5` V | Full scale of the divider, trim against a multimeter |
 | Display | `sh1106_128x64` | Or `ssd1306_64x48` for the smaller board |
+| Brightness | `255` | Panel contrast during the day |
+| Night brightness | `30` | `0` switches the panel off |
+| Night from, until | `22`, `7` | Equal hours disable the dimming |
 | Clock page | on | Alternate the display with date and time |
 | Rotate display | off | For a display mounted the other way up |
 

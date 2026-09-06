@@ -6,6 +6,7 @@
 #include "config.h"
 #include "display.h"
 #include "display_pages.h"
+#include "display_schedule.h"
 #include "net_time.h"
 #include "net_wifi.h"
 #include "sensors.h"
@@ -21,6 +22,45 @@ namespace Display {
 
     Page currentPage = Page::Sensors;
     uint32_t pageShownMs = 0;
+
+    uint8_t appliedBrightness = 0;
+    bool brightnessApplied = false;
+
+    uint8_t scheduledBrightness() {
+      const AppConfig &config = Config::get();
+      struct tm now;
+
+      // Without a synced clock the hour is unknown, so stay bright rather than
+      // risk blanking the display for good.
+      if (!NetTime::localTime(now))
+        return config.displayBrightness;
+
+      const bool night = DisplaySchedule::isNight(static_cast<uint8_t>(now.tm_hour),
+                                                  config.displayNightStartHour,
+                                                  config.displayNightEndHour);
+
+      return night ? config.displayNightBrightness : config.displayBrightness;
+    }
+
+    // Only touches the panel when the setting actually changes
+    void applyBrightness() {
+      const uint8_t wanted = scheduledBrightness();
+      if (brightnessApplied && wanted == appliedBrightness)
+        return;
+
+      appliedBrightness = wanted;
+      brightnessApplied = true;
+
+      // Zero switches the panel off rather than drawing an all black page,
+      // which an OLED still lights faintly and still ages.
+      if (wanted == 0) {
+        oled->setPowerSave(1);
+        return;
+      }
+
+      oled->setPowerSave(0);
+      oled->setContrast(wanted);
+    }
 
     // The clock slot shows the setup instructions until the device is online
     void drawSecondaryPage() {
@@ -54,6 +94,7 @@ namespace Display {
 
     oled->setBusClock(I2C_BUS_CLOCK_HZ);
     oled->begin();
+    applyBrightness();
     showMessage(PROJECT_NAME, String("v") + PROJECT_VERSION, "starting...");
   }
 
@@ -69,6 +110,11 @@ namespace Display {
       return;
 
     pageShownMs = millis();
+    applyBrightness();
+
+    // Nothing to draw while the panel is off
+    if (appliedBrightness == 0)
+      return;
 
     if (currentPage == Page::Sensors && clockEnabled) {
       currentPage = Page::Clock;
@@ -83,6 +129,14 @@ namespace Display {
   void showMessage(const String &line1, const String &line2, const String &line3) {
     if (oled == nullptr)
       return;
+
+    // Boot and OTA progress are worth waking a sleeping panel for; the next
+    // page change puts it back to whatever the schedule says.
+    if (appliedBrightness == 0) {
+      oled->setPowerSave(0);
+      oled->setContrast(Config::get().displayBrightness);
+      brightnessApplied = false;
+    }
 
     layout->drawMessage(*oled, line1, line2, line3);
 

@@ -53,6 +53,10 @@ namespace WebUI {
       document["batteryEnabled"] = config.batteryEnabled;
       document["batteryVoltageScale"] = config.batteryVoltageScale;
       document["displayType"] = config.displayType;
+      document["displayBrightness"] = config.displayBrightness;
+      document["displayNightBrightness"] = config.displayNightBrightness;
+      document["displayNightStartHour"] = config.displayNightStartHour;
+      document["displayNightEndHour"] = config.displayNightEndHour;
       document["showClockPage"] = config.showClockPage;
       document["flipDisplay"] = config.flipDisplay;
       // Secrets are never sent back; empty fields mean "keep the current value"
@@ -99,6 +103,17 @@ namespace WebUI {
 
       if (config.batteryVoltageScale <= 0.0f)
         config.batteryVoltageScale = DEFAULT_BATTERY_VOLTAGE_SCALE;
+
+      config.displayBrightness = document["displayBrightness"] | config.displayBrightness;
+      config.displayNightBrightness = document["displayNightBrightness"] | config.displayNightBrightness;
+
+      // Hours outside the day are silently ignored rather than stored
+      const uint8_t nightStart = document["displayNightStartHour"] | config.displayNightStartHour;
+      const uint8_t nightEnd = document["displayNightEndHour"] | config.displayNightEndHour;
+      if (nightStart <= 23 && nightEnd <= 23) {
+        config.displayNightStartHour = nightStart;
+        config.displayNightEndHour = nightEnd;
+      }
 
       const char *displayType = document["displayType"];
       if (displayType != nullptr &&
