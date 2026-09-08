@@ -120,10 +120,6 @@ namespace Config {
       // A scale of 0 would report a flat battery on a healthy cell
       if (target.batteryVoltageScale <= 0.0f)
         target.batteryVoltageScale = DEFAULT_BATTERY_VOLTAGE_SCALE;
-      target.displayBrightness = DEFAULT_DISPLAY_BRIGHTNESS;
-      target.displayNightBrightness = DEFAULT_DISPLAY_NIGHT_BRIGHTNESS;
-      target.displayNightStartHour = DEFAULT_DISPLAY_NIGHT_START_HOUR;
-      target.displayNightEndHour = DEFAULT_DISPLAY_NIGHT_END_HOUR;
 
       // An hour out of range would make the night window meaningless
       if (target.displayNightStartHour > 23 || target.displayNightEndHour > 23) {
