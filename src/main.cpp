@@ -18,6 +18,38 @@
 // built once the configuration has been loaded.
 static std::unique_ptr<ESP8266WebServer> server;
 
+// A slave that was interrupted mid-byte by a prior reset can leave SDA held
+// low, wedging the bus before anyone gets to call Wire.begin(). Clocking SCL
+// manually lets it finish the byte it was stuck on and release the line.
+static void recoverI2cBus() {
+  pinMode(SDA, INPUT_PULLUP);
+  pinMode(SCL, INPUT_PULLUP);
+  delayMicroseconds(5);
+
+  if (digitalRead(SDA) == HIGH)
+    return;
+
+  pinMode(SCL, OUTPUT);
+  for (uint8_t i = 0; i < 9 && digitalRead(SDA) == LOW; ++i) {
+    digitalWrite(SCL, LOW);
+    delayMicroseconds(5);
+    digitalWrite(SCL, HIGH);
+    delayMicroseconds(5);
+  }
+
+  // Manual STOP condition: SDA low-to-high while SCL is high
+  pinMode(SDA, OUTPUT);
+  digitalWrite(SDA, LOW);
+  delayMicroseconds(5);
+  digitalWrite(SCL, HIGH);
+  delayMicroseconds(5);
+  digitalWrite(SDA, HIGH);
+  delayMicroseconds(5);
+
+  pinMode(SDA, INPUT_PULLUP);
+  pinMode(SCL, INPUT_PULLUP);
+}
+
 static void printBanner() {
   Serial.println();
   Serial.printf("%s %s\n", PROJECT_NAME, PROJECT_VERSION);
@@ -35,6 +67,7 @@ void setup() {
   printBanner();
 
   Config::begin();
+  recoverI2cBus();
   Display::begin();
   Battery::begin();
   Sensors::begin();
