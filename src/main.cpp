@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <ESP8266WebServer.h>
+#include <Wire.h>
 #include <memory>
 
 // Local includes
@@ -50,6 +51,17 @@ static void recoverI2cBus() {
   pinMode(SCL, INPUT_PULLUP);
 }
 
+// A sensor keeps its state across a warm reset of the ESP, so one left in the
+// middle of a measurement answers nothing until it is told to start over. The
+// general call reset clears every device at once; it runs before the display
+// is initialized because it resets that too.
+static void resetI2cDevices() {
+  Wire.beginTransmission(0x00);
+  Wire.write(0x06);
+  Wire.endTransmission();
+  delay(10);
+}
+
 static void printBanner() {
   Serial.println();
   Serial.printf("%s %s\n", PROJECT_NAME, PROJECT_VERSION);
@@ -67,7 +79,12 @@ void setup() {
   printBanner();
 
   Config::begin();
+
   recoverI2cBus();
+  Wire.begin();
+  Wire.setClock(I2C_BUS_CLOCK_HZ);
+  resetI2cDevices();
+
   Display::begin();
   Battery::begin();
   Sensors::begin();

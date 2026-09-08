@@ -23,9 +23,6 @@ namespace Sensors {
   }
 
   void begin() {
-    Wire.begin();
-    Wire.setClock(I2C_BUS_CLOCK_HZ);
-
     Sht3x::begin();
     Sgp30::begin();
     Bmp180::begin();
