@@ -62,20 +62,6 @@ static void resetI2cDevices() {
   delay(10);
 }
 
-// Which addresses answer says whether a missing sensor is absent from the bus
-// or present but refusing to talk, which the drivers alone cannot tell apart.
-static void scanI2cBus(const char *stage) {
-  Serial.printf("[i2c] devices (%s):", stage);
-
-  for (uint8_t address = 1; address < 127; ++address) {
-    Wire.beginTransmission(address);
-    if (Wire.endTransmission() == 0)
-      Serial.printf(" 0x%02x", address);
-  }
-
-  Serial.println();
-}
-
 static void printBanner() {
   Serial.println();
   Serial.printf("%s %s\n", PROJECT_NAME, PROJECT_VERSION);
@@ -98,10 +84,8 @@ void setup() {
   Wire.begin();
   Wire.setClock(I2C_BUS_CLOCK_HZ);
   resetI2cDevices();
-  scanI2cBus("before display");
 
   Display::begin();
-  scanI2cBus("after display");
   Battery::begin();
   Sensors::begin();
 
