@@ -15,13 +15,13 @@
 #include "sensors.h"
 #include "webui.h"
 
-// The listening port comes from the runtime configuration, so the server is
-// built once the configuration has been loaded.
+// The listening port comes from the runtime configuration, so the server is built once the configuration has
+// been loaded.
 static std::unique_ptr<ESP8266WebServer> server;
 
-// A slave that was interrupted mid-byte by a prior reset can leave SDA held
-// low, wedging the bus before anyone gets to call Wire.begin(). Clocking SCL
-// manually lets it finish the byte it was stuck on and release the line.
+// A slave that was interrupted mid-byte by a prior reset can leave SDA held low, wedging the bus before
+// anyone gets to call Wire.begin(). Clocking SCL manually lets it finish the byte it was stuck on and release
+// the line.
 static void recoverI2cBus() {
   pinMode(SDA, INPUT_PULLUP);
   pinMode(SCL, INPUT_PULLUP);
@@ -51,10 +51,9 @@ static void recoverI2cBus() {
   pinMode(SCL, INPUT_PULLUP);
 }
 
-// A sensor keeps its state across a warm reset of the ESP, so one left in the
-// middle of a measurement answers nothing until it is told to start over. The
-// general call reset clears every device at once; it runs before the display
-// is initialized because it resets that too.
+// A sensor keeps its state across a warm reset of the ESP, so one left in the middle of a measurement answers
+// nothing until it is told to start over. The general call reset clears every device at once; it runs before
+// the display is initialized because it resets that too.
 static void resetI2cDevices() {
   Wire.beginTransmission(0x00);
   Wire.write(0x06);
@@ -68,8 +67,8 @@ static void printBanner() {
   Serial.printf("chip %06x, flash %u KiB, core %s\n",
                 ESP.getChipId(), ESP.getFlashChipRealSize() / 1024, ESP.getCoreVersion().c_str());
 
-  // Repeated banners mean the board is restarting; the reason says whether it
-  // is a brownout, a watchdog or a crash.
+  // Repeated banners mean the board is restarting; the reason says whether it is a brownout, a watchdog or a
+  // crash.
   Serial.printf("boot: %s\n", ESP.getResetReason().c_str());
   Serial.printf("reset info: %s\n", ESP.getResetInfo().c_str());
 }

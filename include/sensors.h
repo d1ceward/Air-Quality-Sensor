@@ -8,8 +8,8 @@
 #include "sensors/sgp30.h"
 #include "sensors/sht3x.h"
 
-// Aggregates every sensor behind a single snapshot, so the display, the web UI
-// and the metrics exporter all read the same values.
+// Aggregates every sensor behind a single snapshot, so the display, the web UI and the metrics exporter all
+// read the same values.
 namespace Sensors {
   struct Snapshot {
     bool hasParticulate = false;

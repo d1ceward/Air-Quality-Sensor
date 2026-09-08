@@ -7,8 +7,8 @@
 #include "net_time.h"
 #include "net_wifi.h"
 
-// Layout for the 64x48 SSD1306. Eight characters of the 8x16 font fill the
-// panel exactly, so labels are abbreviated and values are right aligned.
+// Layout for the 64x48 SSD1306. Eight characters of the 8x16 font fill the panel exactly, so labels are
+// abbreviated and values are right aligned.
 namespace DisplayPages {
   namespace {
     constexpr int16_t PANEL_WIDTH = 64;
@@ -70,8 +70,8 @@ namespace DisplayPages {
       oled.drawStr(0, 30, "PM25");
       drawRight(oled, 30, valueOrDash(readings.hasParticulate, readings.particulate.pm25));
 
-      // The third line carries two values, so it uses a narrower font and a
-      // whole number: "-10°C" next to "100%" already fills the panel.
+      // The third line carries two values, so it uses a narrower font and a whole number: "-10°C" next to
+      // "100%" already fills the panel.
       oled.setFont(u8g2_font_6x10_tf);
       if (readings.hasClimate) {
         oled.drawUTF8(0, 46, (String(static_cast<int>(lroundf(readings.temperatureC))) + "°C").c_str());

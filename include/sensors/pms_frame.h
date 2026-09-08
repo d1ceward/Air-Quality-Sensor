@@ -5,10 +5,9 @@
 
 // Parser for the 32 byte frames a Plantower PMS5003 streams once per second.
 //
-// Bytes are fed one at a time so the caller never blocks, the parser resynchro-
-// nises on the 0x42 0x4D header and a frame is only reported once its checksum
-// matches. Free of Arduino dependencies so the protocol can be exercised on the
-// host.
+// Bytes are fed one at a time so the caller never blocks, the parser resynchro- nises on the 0x42 0x4D header
+// and a frame is only reported once its checksum matches. Free of Arduino dependencies so the protocol can be
+// exercised on the host.
 class PmsFrameParser {
 public:
   struct Frame {

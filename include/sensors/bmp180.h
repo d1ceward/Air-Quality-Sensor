@@ -4,9 +4,8 @@
 
 // Bosch BMP180 barometric sensor (GY-68 breakout), I2C address 0x77.
 //
-// Its own temperature reading runs warm because the die self-heats, so the
-// SHT3x stays the reference for ambient temperature; the BMP180 temperature is
-// only exposed for diagnostics.
+// Its own temperature reading runs warm because the die self-heats, so the SHT3x stays the reference for
+// ambient temperature; the BMP180 temperature is only exposed for diagnostics.
 namespace Bmp180 {
   bool begin();
   void loop();

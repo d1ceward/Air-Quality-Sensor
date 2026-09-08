@@ -19,9 +19,8 @@ namespace WebUI {
       rebootAtMs = millis() + delayMs;
     }
 
-    // Guards the administrative routes. /metrics and /api/status stay open:
-    // a scraper cannot be asked for credentials, and the readings are what the
-    // device exists to publish.
+    // Guards the administrative routes. /metrics and /api/status stay open: a scraper cannot be asked for
+    // credentials, and the readings are what the device exists to publish.
     bool authorised() {
       const String &password = Config::get().adminPassword;
       if (password.length() == 0)
@@ -39,8 +38,7 @@ namespace WebUI {
       httpServer->send(code, F("application/json"), payload);
     }
 
-    // Both pages share the same head, so it is streamed separately rather
-    // than stored twice in flash.
+    // Both pages share the same head, so it is streamed separately rather than stored twice in flash.
     void sendPage(PGM_P body) {
       httpServer->setContentLength(CONTENT_LENGTH_UNKNOWN);
       httpServer->send(200, F("text/html; charset=utf-8"), "");

@@ -82,9 +82,8 @@ namespace Pms5003 {
     }
 
     void sendCommand(const uint8_t *command, size_t length) {
-      // No flush() here: on EspSoftwareSerial it discards the receive buffer
-      // instead of draining the transmit one, and write() already blocks until
-      // the last stop bit.
+      // No flush() here: on EspSoftwareSerial it discards the receive buffer instead of draining the transmit
+      // one, and write() already blocks until the last stop bit.
       serial.write(command, length);
     }
   }

@@ -4,9 +4,8 @@
 
 // Plantower PMS5003 particulate matter sensor.
 //
-// The sensor streams a 32 byte frame roughly once per second while its fan is
-// running. To extend the fan lifetime it is duty cycled: wake up, warm up,
-// average a few frames, then sleep.
+// The sensor streams a 32 byte frame roughly once per second while its fan is running. To extend the fan
+// lifetime it is duty cycled: wake up, warm up, average a few frames, then sleep.
 namespace Pms5003 {
   struct Data {
     uint16_t pm1 = 0;    // ug/m3, atmospheric environment

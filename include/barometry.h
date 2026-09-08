@@ -9,7 +9,7 @@ namespace Barometry {
   // Reduces a station reading to sea level, the figure weather forecasts use.
   float toSeaLevelHpa(float measuredHpa, float stationAltitudeMeters);
 
-  // Altitude the standard atmosphere would put this pressure at. It moves with
-  // the weather, so it indicates rather than locates.
+  // Altitude the standard atmosphere would put this pressure at. It moves with the weather, so it indicates
+  // rather than locates.
   float toAltitudeMeters(float measuredHpa);
 }

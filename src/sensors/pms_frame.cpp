@@ -16,8 +16,8 @@ void PmsFrameParser::reset() {
 }
 
 void PmsFrameParser::decode() {
-  // Payload bytes 0 to 5 hold the CF=1 standard particle values, which are
-  // calibrated for an industrial environment and are not what we report.
+  // Payload bytes 0 to 5 hold the CF=1 standard particle values, which are calibrated for an industrial
+  // environment and are not what we report.
   lastFrame.pm1 = word16(payload[6], payload[7]);
   lastFrame.pm25 = word16(payload[8], payload[9]);
   lastFrame.pm10 = word16(payload[10], payload[11]);

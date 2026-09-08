@@ -32,8 +32,8 @@ void test_interpolates_between_two_points() {
   TEST_ASSERT_EQUAL_UINT8(45, BatteryCurve::percentFromVolts(3.805f));
 }
 
-// The curve is what makes the reading useful: a linear reading would still be
-// above 60 % at 3.75 V, where the cell is nearly empty
+// The curve is what makes the reading useful: a linear reading would still be above 60 % at 3.75 V, where the
+// cell is nearly empty
 void test_is_not_linear() {
   const uint8_t atMidVoltage = BatteryCurve::percentFromVolts(3.60f);
   TEST_ASSERT_LESS_THAN_UINT8(10, atMidVoltage);
@@ -50,6 +50,32 @@ void test_is_monotonic() {
   }
 }
 
+// A converter step is about 4.4 mV, which the curve turns into a couple of points around 3.8 V: the reading
+// has to stay put through that much drift
+void test_holds_the_reading_inside_the_deadband() {
+  TEST_ASSERT_EQUAL_UINT8(45, BatteryCurve::stablePercent(45, 46, 3));
+  TEST_ASSERT_EQUAL_UINT8(45, BatteryCurve::stablePercent(45, 43, 3));
+  TEST_ASSERT_EQUAL_UINT8(45, BatteryCurve::stablePercent(45, 45, 3));
+}
+
+void test_follows_a_move_past_the_deadband() {
+  TEST_ASSERT_EQUAL_UINT8(48, BatteryCurve::stablePercent(45, 48, 3));
+  TEST_ASSERT_EQUAL_UINT8(42, BatteryCurve::stablePercent(45, 42, 3));
+  TEST_ASSERT_EQUAL_UINT8(90, BatteryCurve::stablePercent(45, 90, 3));
+}
+
+// The gauge would otherwise stop a few points short of either end
+void test_always_reports_the_ends() {
+  TEST_ASSERT_EQUAL_UINT8(100, BatteryCurve::stablePercent(99, 100, 3));
+  TEST_ASSERT_EQUAL_UINT8(0, BatteryCurve::stablePercent(2, 0, 3));
+}
+
+// A deadband of 0 must not pin the reading to its first value
+void test_passes_everything_through_without_a_deadband() {
+  TEST_ASSERT_EQUAL_UINT8(46, BatteryCurve::stablePercent(45, 46, 0));
+  TEST_ASSERT_EQUAL_UINT8(45, BatteryCurve::stablePercent(45, 45, 0));
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_reports_the_ends_of_the_curve);
@@ -58,5 +84,9 @@ int main() {
   RUN_TEST(test_interpolates_between_two_points);
   RUN_TEST(test_is_not_linear);
   RUN_TEST(test_is_monotonic);
+  RUN_TEST(test_holds_the_reading_inside_the_deadband);
+  RUN_TEST(test_follows_a_move_past_the_deadband);
+  RUN_TEST(test_always_reports_the_ends);
+  RUN_TEST(test_passes_everything_through_without_a_deadband);
   return UNITY_END();
 }

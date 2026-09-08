@@ -10,8 +10,8 @@ namespace Config {
     AppConfig config;
     bool filesystemMounted = false;
 
-    // Device id defaults to a name derived from the chip id, so two sensors on
-    // the same network do not collide.
+    // Device id defaults to a name derived from the chip id, so two sensors on the same network do not
+    // collide.
     String defaultDeviceId() {
       char buffer[32];
       snprintf(buffer, sizeof(buffer), "%s-%06x", DEFAULT_HOSTNAME, ESP.getChipId());
@@ -109,8 +109,8 @@ namespace Config {
       if (target.httpPort == 0)
         target.httpPort = DEFAULT_HTTP_PORT;
 
-      // An empty string is valid JSON, so the fallback above would keep it and
-      // leave the clock on UTC with no daylight saving at all
+      // An empty string is valid JSON, so the fallback above would keep it and leave the clock on UTC with no
+      // daylight saving at all
       if (target.timezone.length() == 0)
         target.timezone = DEFAULT_TIMEZONE;
 

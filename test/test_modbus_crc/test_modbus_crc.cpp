@@ -5,8 +5,8 @@
 void setUp() {}
 void tearDown() {}
 
-// Frames taken from the SenseAir S8 Modbus documentation, checksum included,
-// so the expected values do not come from this implementation.
+// Frames taken from the SenseAir S8 Modbus documentation, checksum included, so the expected values do not
+// come from this implementation.
 void test_known_request_frames() {
   const uint8_t readCo2[] = {0xFE, 0x04, 0x00, 0x03, 0x00, 0x01};
   TEST_ASSERT_EQUAL_HEX16(0xC5D5, modbusCrc16(readCo2, sizeof(readCo2)));

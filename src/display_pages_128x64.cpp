@@ -8,8 +8,8 @@
 #include "net_time.h"
 #include "net_wifi.h"
 
-// Layout for the 128x64 SH1106: every reading fits on one page, in three
-// columns under a temperature and humidity header.
+// Layout for the 128x64 SH1106: every reading fits on one page, in three columns under a temperature and
+// humidity header.
 namespace DisplayPages {
   namespace {
     String valueOrDash(bool valid, uint16_t value) {
@@ -31,8 +31,8 @@ namespace DisplayPages {
         oled.drawStr(2, 10, "--");
       }
 
-      // Pressure fits in the gap left between temperature and humidity. It
-      // starts at 60 so a negative two digit temperature cannot run into it.
+      // Pressure fits in the gap left between temperature and humidity. It starts at 60 so a negative two
+      // digit temperature cannot run into it.
       if (readings.hasPressure) {
         oled.setFont(u8g2_font_5x7_tf);
         oled.drawStr(60, 9, (String(lroundf(readings.pressureHpa)) + "hPa").c_str());

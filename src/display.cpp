@@ -15,8 +15,8 @@ namespace Display {
   namespace {
     enum class Page : uint8_t { Sensors, Clock };
 
-    // The panel is only known once the configuration is loaded, so the U8g2
-    // object is built at boot rather than declared statically.
+    // The panel is only known once the configuration is loaded, so the U8g2 object is built at boot rather
+    // than declared statically.
     U8G2 *oled = nullptr;
     const DisplayPages::Layout *layout = nullptr;
 
@@ -30,8 +30,8 @@ namespace Display {
       const AppConfig &config = Config::get();
       struct tm now;
 
-      // Without a synced clock the hour is unknown, so stay bright rather than
-      // risk blanking the display for good.
+      // Without a synced clock the hour is unknown, so stay bright rather than risk blanking the display for
+      // good.
       if (!NetTime::localTime(now))
         return config.displayBrightness;
 
@@ -51,8 +51,8 @@ namespace Display {
       appliedBrightness = wanted;
       brightnessApplied = true;
 
-      // Zero switches the panel off rather than drawing an all black page,
-      // which an OLED still lights faintly and still ages.
+      // Zero switches the panel off rather than drawing an all black page, which an OLED still lights faintly
+      // and still ages.
       if (wanted == 0) {
         oled->setPowerSave(1);
         return;
@@ -130,8 +130,8 @@ namespace Display {
     if (oled == nullptr)
       return;
 
-    // Boot and OTA progress are worth waking a sleeping panel for; the next
-    // page change puts it back to whatever the schedule says.
+    // Boot and OTA progress are worth waking a sleeping panel for; the next page change puts it back to
+    // whatever the schedule says.
     if (appliedBrightness == 0) {
       oled->setPowerSave(0);
       oled->setContrast(Config::get().displayBrightness);

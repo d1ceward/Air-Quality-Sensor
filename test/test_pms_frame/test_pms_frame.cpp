@@ -4,8 +4,8 @@
 #include "sensors/pms_frame.h"
 
 namespace {
-  // A complete PMS5003 frame: header, length 0x001C, thirteen data words then
-  // the checksum. Atmospheric values are 6, 14 and 20 ug/m3.
+  // A complete PMS5003 frame: header, length 0x001C, thirteen data words then the checksum. Atmospheric
+  // values are 6, 14 and 20 ug/m3.
   const uint8_t VALID_FRAME[] = {
     0x42, 0x4D, 0x00, 0x1C,
     0x00, 0x05, 0x00, 0x0C, 0x00, 0x12,  // CF=1 standard particles

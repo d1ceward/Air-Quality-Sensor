@@ -38,4 +38,16 @@ namespace BatteryCurve {
 
     return 0;
   }
+
+  uint8_t stablePercent(uint8_t reported, uint8_t measured, uint8_t deadband) {
+    if (measured == 0 || measured == 100)
+      return measured;
+
+    const int16_t drift = static_cast<int16_t>(measured) - static_cast<int16_t>(reported);
+
+    if (drift >= deadband || -drift >= deadband)
+      return measured;
+
+    return reported;
+  }
 }

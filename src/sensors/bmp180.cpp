@@ -41,8 +41,8 @@ namespace Bmp180 {
 
     lastAttemptMs = millis();
 
-    // Blocks for about 60 ms: one temperature conversion then one pressure
-    // conversion, both required by the compensation formula.
+    // Blocks for about 60 ms: one temperature conversion then one pressure conversion, both required by the
+    // compensation formula.
     const float sampledTemperature = sensor.readTemperature();
     const int32_t sampledPressurePa = sensor.readPressure();
 

@@ -14,8 +14,8 @@ namespace Metrics {
   namespace {
     constexpr size_t CHUNK_FLUSH_SIZE = 512;
 
-    // Namespace prefixing every exported metric, so short names such as "temp"
-    // or "pressure" cannot collide with another exporter on the same Prometheus.
+    // Namespace prefixing every exported metric, so short names such as "temp" or "pressure" cannot collide
+    // with another exporter on the same Prometheus.
     const __FlashStringHelper *metricPrefix() { return F("air_quality_"); }
 
     // Label values must escape backslashes, quotes and newlines

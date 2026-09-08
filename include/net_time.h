@@ -3,8 +3,8 @@
 #include <Arduino.h>
 #include <time.h>
 
-// SNTP time, with the timezone and DST rules handled by the C library through
-// a POSIX TZ string (no fixed UTC offset to update twice a year).
+// SNTP time, with the timezone and DST rules handled by the C library through a POSIX TZ string (no fixed UTC
+// offset to update twice a year).
 namespace NetTime {
   void begin();
 

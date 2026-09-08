@@ -11,7 +11,7 @@ namespace SenseAirS8 {
   uint16_t co2Ppm();
   uint32_t readingAgeMs();
 
-  // Triggers a manual background calibration. The sensor must have been in
-  // fresh outdoor air (~400 ppm) for a few minutes beforehand.
+  // Triggers a manual background calibration. The sensor must have been in fresh outdoor air (~400 ppm) for a
+  // few minutes beforehand.
   bool calibrate();
 }

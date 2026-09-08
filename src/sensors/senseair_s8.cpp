@@ -37,8 +37,8 @@ namespace SenseAirS8 {
 
     // Without the bytes themselves, a failure cannot be told apart from silence
     void reportFailure(const __FlashStringHelper *reason) {
-      // print() knows how to walk a flash string; printf("%s") would read it
-      // with unaligned accesses and fault.
+      // print() knows how to walk a flash string; printf("%s") would read it with unaligned accesses and
+      // fault.
       Serial.print(F("[co2] "));
       Serial.print(reason);
       Serial.printf(" (%u/%u bytes:", responseLength, RESPONSE_SIZE);
@@ -52,9 +52,9 @@ namespace SenseAirS8 {
     void sendRequest() {
       flushInput();
       responseLength = 0;
-      // write() blocks until the last stop bit, and flush() must not be called
-      // here: on EspSoftwareSerial it discards the receive buffer rather than
-      // draining the transmit one, which can eat the start of the answer.
+      // write() blocks until the last stop bit, and flush() must not be called here: on EspSoftwareSerial it
+      // discards the receive buffer rather than draining the transmit one, which can eat the start of the
+      // answer.
       serial.write(COMMAND_READ_CO2, sizeof(COMMAND_READ_CO2));
       requestSentMs = millis();
       lastRequestMs = requestSentMs;

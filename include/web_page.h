@@ -2,12 +2,11 @@
 
 #include <Arduino.h>
 
-// Web UI, served from flash and split in two pages: the readings, open to
-// anyone, and the settings, behind the admin password. Both share this head so
-// the stylesheet is stored once.
+// Web UI, served from flash and split in two pages: the readings, open to anyone, and the settings, behind
+// the admin password. Both share this head so the stylesheet is stored once.
 //
-// Kept self-contained, with no CDN, so the interface also works from the setup
-// access point, before the device has any internet access.
+// Kept self-contained, with no CDN, so the interface also works from the setup access point, before the
+// device has any internet access.
 const char WEB_HEAD[] PROGMEM = R"rawliteral(<!doctype html>
 <html lang="en">
 <head>
@@ -229,9 +228,8 @@ setInterval(refresh, 3000);
 </html>
 )rawliteral";
 
-// Configuration form and the administrative actions. The page itself is behind
-// the admin password, so the browser asks once and then carries the credentials
-// on the calls this script makes.
+// Configuration form and the administrative actions. The page itself is behind the admin password, so the
+// browser asks once and then carries the credentials on the calls this script makes.
 const char WEB_SETTINGS[] PROGMEM = R"rawliteral(<title>Settings</title>
 </head>
 <body>
@@ -305,8 +303,8 @@ function toast(message) {
   setTimeout(() => node.classList.remove('show'), 2600);
 }
 
-// The page is already authenticated, so a 401 here means the browser dropped
-// its cached credentials rather than a wrong password.
+// The page is already authenticated, so a 401 here means the browser dropped its cached credentials rather
+// than a wrong password.
 async function send(url, options) {
   const response = await fetch(url, { ...options, cache: 'no-store' });
   if (response.status === 401) toast('Not authorised, reload the page');

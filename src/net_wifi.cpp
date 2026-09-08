@@ -139,8 +139,8 @@ namespace NetWifi {
     if (!Config::hasWifiCredentials())
       return;
 
-    // Give up on the initial attempt and expose the setup portal, while still
-    // retrying the configured network in the background.
+    // Give up on the initial attempt and expose the setup portal, while still retrying the configured network
+    // in the background.
     if (waitingForConnection && millis() - connectStartedMs >= WIFI_CONNECT_TIMEOUT_MS) {
       Serial.println(F("[wifi] connection timed out"));
       waitingForConnection = false;
