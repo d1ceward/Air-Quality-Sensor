@@ -95,9 +95,10 @@ constexpr float BATTERY_VOLTS_SMOOTHING = 0.2f;
 // One converter step is 4.4 mV, worth about two points on the steep part of the discharge curve, so the
 // reported figure only moves once it is out by more.
 constexpr uint8_t BATTERY_PERCENT_DEADBAND = 3U;
-// 130k on the shield plus the 220k/100k divider of the board: the 1 V full scale of the converter corresponds
-// to 4.5 V on the cell.
-constexpr float DEFAULT_BATTERY_VOLTAGE_SCALE = 4.5f;
+// The resistor of the shield plus the 220k/100k divider of the board set what the 1 V full scale of the
+// converter corresponds to on the cell: 4.2 V for the 100k shield fitted here, 4.5 V for the 130k of the
+// standard one. Overridden by the batteryVoltageScale setting.
+constexpr float DEFAULT_BATTERY_VOLTAGE_SCALE = 4.2f;
 
 // -----------------------------------------------------------------------------------------------------------
 // Network

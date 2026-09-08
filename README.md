@@ -40,19 +40,42 @@ The pin map lives in [include/config.h](include/config.h).
 The 128x64 board can run from a Wemos D1 mini battery shield. Enable it under
 Battery in the web UI; it stays off by default so the other board is unaffected.
 
-Voltage is read on A0: the 130 kOhm resistor of the shield sits in series with
-the 220k/100k divider of the board, so the 1 V full scale of the converter
-lands at 4.5 V on the cell. That is the `batteryVoltageScale` setting, to trim
-against a multimeter if the resistor tolerances shift the reading.
+Voltage is read on A0: the resistor of the shield sits in series with the
+220k/100k divider of the board, so the 1 V full scale of the converter lands at
+`1 V x (Rshield + 320k) / 100k` on the cell. The shield fitted here carries
+100 kOhm, which puts it at 4.2 V; a standard 130 kOhm shield lands at 4.5 V.
+That is the `batteryVoltageScale` setting, to trim against a multimeter if the
+resistor tolerances shift the reading. At 4.2 V full scale a freshly charged
+cell sits at the very top of the range, so it clips to 100 % rather than
+reading over.
 
-Expect around 1.6 hours from a 500 mAh cell. The load is close to 173 mA on the
-5 V rail, of which 48 mA is the SGP30 alone: its hotplate runs continuously and
-its baseline algorithm needs an uninterrupted 1 Hz measurement, so it cannot be
-duty cycled without losing its calibration. Peaks matter more than the average
-here: the SenseAir S8 draws up to 300 mA during a measurement and the radio as
-much while transmitting, which is about 1.17 A from the cell through the boost,
-or 2.3 C on a 500 mAh pack. Both the cell and the shield need to sustain that
-or the board will brown out and reboot.
+The cell fitted here is a single LiPo of 610 mAh, 3.7 V nominal, charged to
+4.20 V and cut off at 2.75 V. It takes 610 mA (1 C) of charge current and
+1220 mA (2 C) of discharge current at most, 122 mA (0.2 C) being its standard
+rate for both.
+
+Expect around 2 hours from that cell. The load is close to 173 mA on the 5 V
+rail, of which 48 mA is the SGP30 alone: its hotplate runs continuously and its
+baseline algorithm needs an uninterrupted 1 Hz measurement, so it cannot be duty
+cycled without losing its calibration. Peaks matter more than the average here:
+the SenseAir S8 draws up to 300 mA during a measurement and the radio as much
+while transmitting, which is about 1.17 A from the cell through the boost, or
+1.9 C on this pack. That sits just under its 2 C limit, leaving no margin: a
+cell of a different grade, or one that has aged, browns the board out and
+reboots it.
+
+The cell carries a PCM board against overvoltage, deep discharge, over current
+and short circuit (EEMB, UL file MH20555, UN38.3 for transport). Its over
+current trip is the other thing to watch at a 1.17 A peak: when the board
+reboots on a peak rather than on a flat battery, the PCM latching off is as
+likely a cause as the boost converter sagging. Off the board, keep the cell
+between 40 and 60 % for storage, under 25 degrees, and top it up every three
+months to hold it between 3.7 and 4.0 V.
+
+The state of charge curve in [src/battery_curve.cpp](src/battery_curve.cpp)
+reports 0 % at 3.00 V, above the 2.75 V cut-off of the cell. The last stretch is
+left unreported on purpose: the boost converter of the shield gives up around
+there, and a LiPo taken to its cut-off under load ages faster.
 
 A percentage under load reads low: a LiPo sags by 50 to 100 mV at this current,
 and the curve is steep in that region.
@@ -262,7 +285,7 @@ LittleFS partition.
 | Timezone | `CET-1CEST,M3.5.0,M10.5.0/3` | POSIX TZ string, French summer time by default |
 | Admin password | `airquality` | Settings, reboot, calibration, ArduinoOTA and `/update` |
 | Battery shield | off | Enables the A0 reading and the gauge |
-| Battery ADC scale | `4.5` V | Full scale of the divider, trim against a multimeter |
+| Battery ADC scale | `4.2` V | Full scale of the divider, `4.5` on a 130k shield, trim against a multimeter |
 | Display | `sh1106_128x64` | Or `ssd1306_64x48` for the smaller board |
 | Brightness | `255` | Panel contrast during the day |
 | Night brightness | `30` | `0` switches the panel off |
