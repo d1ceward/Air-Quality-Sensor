@@ -62,14 +62,20 @@ namespace Display {
       oled->setContrast(wanted);
     }
 
-    // The clock slot shows the setup instructions until the device is online
-    void drawSecondaryPage() {
-      if (NetWifi::isAccessPointActive() || !NetTime::isSynced()) {
+    // The clock slot carries the setup instructions, but only while the access point is really up: they name
+    // an SSID and an address that do not exist otherwise. Before the first SNTP answer the slot has nothing
+    // to show either, so it is skipped rather than filled with a clock full of dashes.
+    bool drawSecondaryPage() {
+      if (NetWifi::isAccessPointActive()) {
         layout->drawSetup(*oled);
-        return;
+        return true;
       }
 
+      if (!NetTime::isSynced())
+        return false;
+
       layout->drawClock(*oled);
+      return true;
     }
   }
 
@@ -116,9 +122,8 @@ namespace Display {
     if (appliedBrightness == 0)
       return;
 
-    if (currentPage == Page::Sensors && clockEnabled) {
+    if (currentPage == Page::Sensors && clockEnabled && drawSecondaryPage()) {
       currentPage = Page::Clock;
-      drawSecondaryPage();
       return;
     }
 

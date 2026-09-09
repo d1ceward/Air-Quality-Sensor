@@ -16,6 +16,7 @@ namespace NetWifi {
     uint32_t connectStartedMs = 0;
     uint32_t lastRetryMs = 0;
     bool waitingForConnection = false;
+    bool connected = false;
 
     // Hostnames only accept letters, digits and hyphens
     String sanitizeHostname(const String &value) {
@@ -50,6 +51,11 @@ namespace NetWifi {
         return;
 
       apSsid = String(DEFAULT_HOSTNAME) + "-setup-" + String(ESP.getChipId(), HEX);
+
+      // The station stays up so the configured network is still retried in the background
+      if (Config::hasWifiCredentials())
+        WiFi.mode(WIFI_AP_STA);
+
       WiFi.softAP(apSsid.c_str(), SETUP_AP_PASSWORD);
       accessPointActive = true;
 
@@ -95,9 +101,25 @@ namespace NetWifi {
       Serial.printf("[wifi] reachable at http://%s.local:%u/\n", host.c_str(), Config::get().httpPort);
     }
 
+    void stopMdns() {
+      if (!mdnsStarted)
+        return;
+
+      MDNS.end();
+      mdnsStarted = false;
+    }
+
     void onConnected() {
       waitingForConnection = false;
+      connected = true;
+
+      // The responder was bound to the access point interface, it has to be restarted on the station one
+      const bool rebindMdns = accessPointActive;
       stopAccessPoint();
+
+      if (rebindMdns)
+        stopMdns();
+
       startMdns();
 
       Serial.printf("[wifi] connected, IP %s, RSSI %d dBm\n",
@@ -109,6 +131,12 @@ namespace NetWifi {
     host = sanitizeHostname(Config::get().deviceId);
 
     WiFi.persistent(false);
+
+    // A warm reset leaves the radio with the association of the previous run, and the SDK auto connect it
+    // starts on its own races the one below. Powering the interface down first gives the station a clean
+    // start, otherwise the first attempt after a reboot often runs into the timeout and raises the setup
+    // access point for nothing.
+    WiFi.mode(WIFI_OFF);
     WiFi.setAutoReconnect(true);
     WiFi.hostname(host);
 
@@ -129,11 +157,19 @@ namespace NetWifi {
     if (mdnsStarted)
       MDNS.update();
 
+    // The station can come up long after the setup access point was raised, so the transition is watched on
+    // the connection state itself rather than on the pending initial attempt.
     if (WiFi.status() == WL_CONNECTED) {
-      if (waitingForConnection)
+      if (!connected)
         onConnected();
 
       return;
+    }
+
+    if (connected) {
+      connected = false;
+      lastRetryMs = millis();
+      Serial.println(F("[wifi] connection lost, retrying"));
     }
 
     if (!Config::hasWifiCredentials())

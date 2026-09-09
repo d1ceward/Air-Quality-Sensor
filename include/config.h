@@ -116,7 +116,9 @@ constexpr char ADMIN_USER[] = "admin";
 
 // Fallback access point used when no WiFi network is configured or reachable
 constexpr char SETUP_AP_PASSWORD[] = "airquality";
-constexpr uint32_t WIFI_CONNECT_TIMEOUT_MS = 20000U;
+// Association plus DHCP after a warm reset regularly takes more than 20 s, and every second under it is a
+// boot that lands in setup mode while the network was fine.
+constexpr uint32_t WIFI_CONNECT_TIMEOUT_MS = 30000U;
 constexpr uint32_t WIFI_RETRY_INTERVAL_MS = 30000U;
 
 // Configuration file on the LittleFS partition
