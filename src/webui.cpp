@@ -4,6 +4,7 @@
 // Local includes
 #include "app_config.h"
 #include "config.h"
+#include "history_recorder.h"
 #include "metrics.h"
 #include "net_wifi.h"
 #include "sensors.h"
@@ -14,6 +15,12 @@ namespace WebUI {
   namespace {
     ESP8266WebServer *httpServer = nullptr;
     uint32_t rebootAtMs = 0;
+    // Set when the reboot is meant to wipe the configuration first, so the answer goes out before the
+    // filesystem is touched
+    bool factoryResetPending = false;
+
+    // A phone offers what it can see; more than this is a list nobody scrolls
+    constexpr uint8_t MAX_SCAN_RESULTS = 20;
 
     void scheduleReboot(uint32_t delayMs = 500U) {
       rebootAtMs = millis() + delayMs;
@@ -64,6 +71,46 @@ namespace WebUI {
 
     void handleStatus() {
       sendJson(200, Metrics::toJson());
+    }
+
+    // Networks in range, so the SSID does not have to be typed from memory. The first call starts the scan
+    // and answers "scanning"; the page polls until the results are in.
+    void handleScan() {
+      if (!authorised())
+        return;
+
+      NetWifi::ScanResult results[MAX_SCAN_RESULTS];
+      uint8_t found = 0;
+      const NetWifi::ScanState state = NetWifi::scan(results, MAX_SCAN_RESULTS, found);
+
+      if (state == NetWifi::ScanState::Failed) {
+        sendJson(500, F("{\"scanning\":false,\"error\":\"scan failed\",\"networks\":[]}"));
+        return;
+      }
+
+      if (state == NetWifi::ScanState::Running) {
+        sendJson(200, F("{\"scanning\":true,\"networks\":[]}"));
+        return;
+      }
+
+      JsonDocument document;
+      document["scanning"] = false;
+      JsonArray networks = document["networks"].to<JsonArray>();
+
+      for (uint8_t index = 0; index < found; ++index) {
+        JsonObject network = networks.add<JsonObject>();
+        network["ssid"] = results[index].ssid;
+        network["rssi"] = results[index].rssi;
+        network["secured"] = results[index].secured;
+      }
+
+      String payload;
+      serializeJson(document, payload);
+      sendJson(200, payload);
+    }
+
+    void handleHistory() {
+      HistoryRecorder::sendJson(*httpServer);
     }
 
     void handleGetConfig() {
@@ -199,6 +246,17 @@ namespace WebUI {
       scheduleReboot();
     }
 
+    // Wipes the configuration, WiFi credentials and admin password included, and the stored SGP30 baseline
+    // with it. The device comes back up in setup mode.
+    void handleFactoryReset() {
+      if (!authorised())
+        return;
+
+      sendJson(200, F("{\"status\":\"resetting\"}"));
+      factoryResetPending = true;
+      scheduleReboot(1000U);
+    }
+
     void handleCalibrateCo2() {
       if (!authorised())
         return;
@@ -210,6 +268,17 @@ namespace WebUI {
     }
 
     void handleNotFound() {
+      // On the setup access point every unknown address is redirected to the readings page, which is what a
+      // phone's captive portal check follows: joining the network opens the page on its own instead of
+      // leaving someone to find 192.168.4.1 by hand. It points at the root and not at /settings because
+      // that one asks for the admin password, and a browser prompting for credentials is not what a
+      // captive portal notification should open on.
+      if (NetWifi::isAccessPointActive()) {
+        httpServer->sendHeader(F("Location"), String("http://") + NetWifi::ipAddress() + "/");
+        httpServer->send(302, F("text/plain"), F("Redirecting to the setup page\n"));
+        return;
+      }
+
       httpServer->send(404, F("text/plain"), F("Not found\n"));
     }
   }
@@ -221,14 +290,22 @@ namespace WebUI {
     server.on("/settings", HTTP_GET, handleSettingsPage);
     server.on("/metrics", HTTP_GET, handleMetrics);
     server.on("/api/status", HTTP_GET, handleStatus);
+    server.on("/api/history", HTTP_GET, handleHistory);
     server.on("/api/config", HTTP_GET, handleGetConfig);
     server.on("/api/config", HTTP_POST, handlePostConfig);
+    server.on("/api/scan", HTTP_GET, handleScan);
     server.on("/api/reboot", HTTP_POST, handleReboot);
+    server.on("/api/factory-reset", HTTP_POST, handleFactoryReset);
     server.on("/api/calibrate-co2", HTTP_POST, handleCalibrateCo2);
     server.onNotFound(handleNotFound);
 
     server.begin();
     Serial.printf("[http] listening on port %u\n", Config::get().httpPort);
+
+    if (Config::hasNoAdminPassword())
+      Serial.println(F("[http] no admin password set, the settings and the firmware upload are open"));
+    else if (Config::usesDefaultAdminPassword())
+      Serial.println(F("[http] admin password is still the one built into the firmware, change it"));
   }
 
   void loop() {
@@ -236,6 +313,11 @@ namespace WebUI {
       httpServer->handleClient();
 
     if (rebootAtMs != 0 && millis() >= rebootAtMs) {
+      if (factoryResetPending) {
+        Serial.println(F("[http] restoring the factory configuration"));
+        Config::reset();
+      }
+
       Serial.println(F("[http] rebooting on request"));
       ESP.restart();
     }

@@ -126,6 +126,10 @@ namespace Pms5003 {
     }
   }
 
+  bool isAvailable() {
+    return hasData;
+  }
+
   bool hasReading() {
     return hasData && readingAgeMs() < PMS_READING_MAX_AGE_MS;
   }

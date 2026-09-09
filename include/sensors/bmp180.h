@@ -7,8 +7,12 @@
 // Its own temperature reading runs warm because the die self-heats, so the SHT3x stays the reference for
 // ambient temperature; the BMP180 temperature is only exposed for diagnostics.
 namespace Bmp180 {
+  // False when the sensor did not answer. loop() keeps probing it, so this can turn true later.
   bool begin();
   void loop();
+
+  // True once the sensor has answered a probe, whether or not it has produced a reading since.
+  bool isAvailable();
 
   bool hasReading();
   float pressureHpa();         // measured at the station

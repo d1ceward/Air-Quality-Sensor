@@ -8,11 +8,13 @@
 #include "battery.h"
 #include "config.h"
 #include "display.h"
+#include "history_recorder.h"
 #include "metrics.h"
 #include "net_ota.h"
 #include "net_time.h"
 #include "net_wifi.h"
 #include "sensors.h"
+#include "uptime.h"
 #include "webui.h"
 
 // The listening port comes from the runtime configuration, so the server is built once the configuration has
@@ -77,6 +79,8 @@ void setup() {
   Serial.begin(SERIAL_BAUD_RATE);
   printBanner();
 
+  Uptime::tick(millis());
+
   Config::begin();
 
   recoverI2cBus();
@@ -90,6 +94,7 @@ void setup() {
 
   NetWifi::begin();
   NetTime::begin();
+  HistoryRecorder::begin();
 
   server.reset(new ESP8266WebServer(Config::get().httpPort));
   NetOta::begin(*server);
@@ -97,6 +102,10 @@ void setup() {
 }
 
 void loop() {
+  // Called on every iteration, well inside the 49.7 days it takes millis() to wrap, which is what lets
+  // Uptime rebuild a count that does not fall back to zero
+  Uptime::tick(millis());
+
   NetOta::loop();
 
   // Nothing else must touch the bus or the display during a firmware upload
@@ -108,4 +117,5 @@ void loop() {
   Sensors::loop();
   Battery::loop();
   Display::loop();
+  HistoryRecorder::loop();
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
+#include <ArduinoJson.h>
 #include <IPAddress.h>
 
 // Runtime configuration, persisted as JSON on LittleFS (/config.json).
@@ -38,10 +39,11 @@ struct AppConfig {
   bool showClockPage = true;
   bool flipDisplay = false;  // true = rotate 180 deg (display mounted top left)
 
-  // SGP30 calibration, refreshed by the sensor module
-  uint16_t sgpBaselineCo2 = 0;
-  uint16_t sgpBaselineTvoc = 0;
-  uint32_t sgpBaselineEpoch = 0;
+  // SGP30 calibration as it used to be stored, only read to migrate an existing config file into
+  // /sgp30.json. See BaselineStore.
+  uint16_t legacySgpBaselineCo2 = 0;
+  uint16_t legacySgpBaselineTvoc = 0;
+  uint32_t legacySgpBaselineEpoch = 0;
 };
 
 namespace Config {
@@ -58,4 +60,20 @@ namespace Config {
 
   // True when a WiFi network has been configured.
   bool hasWifiCredentials();
+
+  // True while the admin password is still the one compiled into the firmware, which is public. The web UI
+  // turns it into a banner rather than refusing to work, because a sensor on a home network with the factory
+  // password is still better than one nobody can reach.
+  bool usesDefaultAdminPassword();
+
+  // True when no admin password is set at all, which leaves the settings, the reboot and the firmware
+  // upload open to anyone who can reach the device.
+  bool hasNoAdminPassword();
+
+  // True once LittleFS is mounted, so the callers that persist their own files can skip the attempt.
+  bool isStorageAvailable();
+
+  // Writes a JSON document to path through a temporary file renamed over it, so a power cut during the write
+  // cannot leave a truncated file behind. Shared with BaselineStore.
+  bool writeJsonAtomically(const char *path, const char *temporaryPath, const JsonDocument &document);
 }

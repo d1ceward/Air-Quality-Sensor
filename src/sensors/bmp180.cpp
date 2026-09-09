@@ -16,16 +16,23 @@ namespace Bmp180 {
     bool hasSample = false;
     uint32_t lastSampleMs = 0;
     uint32_t lastAttemptMs = 0;
+    uint32_t lastProbeMs = 0;
 
     float pressure = 0.0f;
     float temperature = 0.0f;
+
+    bool probe() {
+      // Ultra high resolution: 0.02 hPa, about 26 ms per conversion
+      available = sensor.begin(BMP085_ULTRAHIGHRES, &Wire);
+      lastProbeMs = millis();
+
+      return available;
+    }
   }
 
   bool begin() {
-    // Ultra high resolution: 0.02 hPa, about 26 ms per conversion
-    available = sensor.begin(BMP085_ULTRAHIGHRES, &Wire);
-    if (!available) {
-      Serial.println(F("[bmp180] sensor not found"));
+    if (!probe()) {
+      Serial.println(F("[bmp180] sensor not found, retrying in the background"));
       return false;
     }
 
@@ -33,8 +40,16 @@ namespace Bmp180 {
   }
 
   void loop() {
-    if (!available)
-      return;
+    // Probed again until it answers rather than written off for the rest of the run
+    if (!available) {
+      if (millis() - lastProbeMs < SENSOR_RETRY_INTERVAL_MS)
+        return;
+
+      if (!probe())
+        return;
+
+      Serial.println(F("[bmp180] sensor found"));
+    }
 
     if (millis() - lastAttemptMs < PRESSURE_INTERVAL_MS)
       return;
@@ -54,6 +69,10 @@ namespace Bmp180 {
     pressure = static_cast<float>(sampledPressurePa) / 100.0f;
     hasSample = true;
     lastSampleMs = millis();
+  }
+
+  bool isAvailable() {
+    return available;
   }
 
   bool hasReading() {

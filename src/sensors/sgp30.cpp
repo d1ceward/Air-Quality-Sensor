@@ -4,6 +4,7 @@
 
 // Local includes
 #include "app_config.h"
+#include "baseline_store.h"
 #include "config.h"
 #include "sensors/sgp30.h"
 
@@ -16,61 +17,77 @@ namespace Sgp30 {
     uint32_t lastSampleMs = 0;
     uint32_t lastAttemptMs = 0;
     uint32_t lastBaselineSaveMs = 0;
+    uint32_t lastProbeMs = 0;
 
     uint16_t tvoc = 0;
     uint16_t eco2 = 0;
 
     // A stored baseline is only meaningful for about a week (datasheet).
     void restoreBaseline() {
-      const AppConfig &config = Config::get();
-      if (config.sgpBaselineCo2 == 0 && config.sgpBaselineTvoc == 0)
+      BaselineStore::Baseline baseline;
+      if (!BaselineStore::load(baseline))
         return;
 
       const uint32_t now = static_cast<uint32_t>(time(nullptr));
-      const bool clockValid = now > 1600000000UL && config.sgpBaselineEpoch > 0;
+      const bool clockValid = now > 1600000000UL && baseline.epoch > 0;
 
-      if (clockValid && now - config.sgpBaselineEpoch > SGP30_BASELINE_MAX_AGE_S) {
+      if (clockValid && now - baseline.epoch > SGP30_BASELINE_MAX_AGE_S) {
         Serial.println(F("[sgp30] stored baseline too old, ignoring"));
         return;
       }
 
-      sensor.setBaseline(config.sgpBaselineCo2, config.sgpBaselineTvoc);
-      Serial.printf("[sgp30] baseline restored (eCO2 %u, TVOC %u)\n",
-                    config.sgpBaselineCo2, config.sgpBaselineTvoc);
+      sensor.setBaseline(baseline.eco2, baseline.tvoc);
+      Serial.printf("[sgp30] baseline restored (eCO2 %u, TVOC %u)\n", baseline.eco2, baseline.tvoc);
     }
 
     void persistBaseline() {
-      uint16_t baselineCo2 = 0;
-      uint16_t baselineTvoc = 0;
+      BaselineStore::Baseline baseline;
 
-      if (!sensor.getBaseline(&baselineCo2, &baselineTvoc))
+      if (!sensor.getBaseline(&baseline.eco2, &baseline.tvoc))
         return;
 
-      AppConfig &config = Config::get();
-      config.sgpBaselineCo2 = baselineCo2;
-      config.sgpBaselineTvoc = baselineTvoc;
-      config.sgpBaselineEpoch = static_cast<uint32_t>(time(nullptr));
-      Config::save();
+      baseline.epoch = static_cast<uint32_t>(time(nullptr));
 
-      Serial.printf("[sgp30] baseline saved (eCO2 %u, TVOC %u)\n", baselineCo2, baselineTvoc);
+      if (!BaselineStore::save(baseline))
+        return;
+
+      Serial.printf("[sgp30] baseline saved (eCO2 %u, TVOC %u)\n", baseline.eco2, baseline.tvoc);
+    }
+
+    bool probe() {
+      available = sensor.begin() && sensor.isConnected();
+      lastProbeMs = millis();
+
+      if (!available)
+        return false;
+
+      restoreBaseline();
+      lastBaselineSaveMs = millis();
+
+      return true;
     }
   }
 
   bool begin() {
-    available = sensor.begin() && sensor.isConnected();
-    if (!available) {
-      Serial.println(F("[sgp30] sensor not found"));
+    if (!probe()) {
+      Serial.println(F("[sgp30] sensor not found, retrying in the background"));
       return false;
     }
 
-    restoreBaseline();
-    lastBaselineSaveMs = millis();
     return true;
   }
 
   void loop() {
-    if (!available)
-      return;
+    // Probed again until it answers rather than written off for the rest of the run
+    if (!available) {
+      if (millis() - lastProbeMs < SENSOR_RETRY_INTERVAL_MS)
+        return;
+
+      if (!probe())
+        return;
+
+      Serial.println(F("[sgp30] sensor found"));
+    }
 
     if (millis() - lastAttemptMs >= TVOC_INTERVAL_MS) {
       lastAttemptMs = millis();
@@ -88,6 +105,10 @@ namespace Sgp30 {
       lastBaselineSaveMs = millis();
       persistBaseline();
     }
+  }
+
+  bool isAvailable() {
+    return available;
   }
 
   bool hasReading() {

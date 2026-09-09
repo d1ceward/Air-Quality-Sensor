@@ -116,6 +116,10 @@ namespace SenseAirS8 {
       sendRequest();
   }
 
+  bool isAvailable() {
+    return hasCo2;
+  }
+
   bool hasReading() {
     return hasCo2 && readingAgeMs() < READING_MAX_AGE_MS;
   }

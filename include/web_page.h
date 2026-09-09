@@ -64,6 +64,10 @@ h1 { font-size: 20px; margin: 0; font-weight: 600; }
 .card .value { font-size: 34px; font-weight: 650; line-height: 1.1; margin-top: 6px; font-variant-numeric: tabular-nums; }
 .card .unit { font-size: 14px; font-weight: 400; color: var(--muted); margin-left: 4px; }
 .card .note { font-size: 12px; color: var(--muted); margin-top: 6px; min-height: 18px; }
+.spark { display: block; width: 100%; height: 26px; margin-top: 10px; overflow: visible; }
+.spark polyline { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round;
+  stroke-linecap: round; vector-effect: non-scaling-stroke; opacity: .75; }
+.spark.empty { visibility: hidden; }
 .bar { height: 4px; border-radius: 2px; background: var(--line); margin-top: 12px; overflow: hidden; }
 .bar > i { display: block; height: 100%; width: 0; border-radius: 2px; transition: width .4s ease; }
 .good { color: var(--good); } .fair { color: var(--fair); }
@@ -97,6 +101,19 @@ button:hover, .btn:hover { border-color: var(--accent); }
   padding: 10px 16px; font-size: 14px; opacity: 0; pointer-events: none; transition: opacity .2s;
 }
 .toast.show { opacity: 1; }
+.banner {
+  border: 1px solid var(--fair); border-left-width: 3px; border-radius: 8px;
+  background: var(--panel); padding: 12px 14px; margin: 0 0 20px; font-size: 13px;
+}
+.banner.severe { border-color: var(--bad); }
+.banner strong { font-weight: 600; }
+.banner a { color: var(--accent); }
+.banner p { margin: 0; }
+.banner p + p { margin-top: 6px; }
+.hint { font-size: 12px; color: var(--muted); margin: 4px 0 0; }
+.field-row { display: flex; gap: 8px; align-items: flex-end; }
+.field-row > div { flex: 1; min-width: 0; }
+.field-row button { flex: none; }
 </style>
 )rawliteral";
 
@@ -111,6 +128,8 @@ const char WEB_STATUS[] PROGMEM = R"rawliteral(<title>Air Quality Sensor</title>
   </header>
   <p class="sub" id="subtitle">&nbsp;</p>
 
+  <div id="banners"></div>
+
   <div class="grid" id="cards"></div>
 
   <section>
@@ -118,6 +137,7 @@ const char WEB_STATUS[] PROGMEM = R"rawliteral(<title>Air Quality Sensor</title>
     <div class="panel info" id="info"></div>
     <div class="actions">
       <a class="btn" href="/metrics">Prometheus metrics</a>
+      <a class="btn" href="/api/history">Trend data</a>
       <a class="btn" href="/settings">Settings</a>
     </div>
   </section>
@@ -132,13 +152,13 @@ const CARDS = [
       'Carbon dioxide concentration, an indicator of how effectively the room is ventilated. Levels rise as occupants breathe and fall once the air is renewed.',
       'Outdoor air is typically around 420 ppm. Above 1200 ppm, ventilation is advisable; above 2000 ppm, comfort and concentration are measurably affected.',
     ] },
-  { key: 'pm25', label: 'PM2.5', unit: 'ug/m3', max: 150, steps: [12, 35, 55],
+  { key: 'pm25', label: 'PM2.5', unit: 'ug/m3', max: 150, steps: [9, 35, 55],
     value: r => r.pm25.value, valid: r => r.pm25.valid,
     note: r => 'AQI US ' + r.pm25.aqius + (r.pm25.fanRunning ? ' - fan running' : ' - fan asleep'),
     help: [
       'Concentration of fine particles small enough to reach the lower airways. Common indoor sources are cooking, combustion, candles and outdoor pollution entering the room.',
       'A measurement cycle runs every 5 minutes, so the displayed value reflects the most recent cycle rather than the present instant.',
-      'AQI US expresses the same concentration on the standard 0 to 500 air quality index: below 50 is good, above 100 is considered unhealthy.',
+      'AQI US expresses the same concentration on the standard 0 to 500 air quality index: below 50 is good, above 100 is considered unhealthy. The index uses the breakpoints the EPA revised in 2024, so a given concentration reads slightly higher than it did under the previous table.',
     ] },
   { key: 'tvoc', label: 'TVOC', unit: 'ppb', max: 2200, steps: [220, 660, 1430],
     value: r => r.tvoc.value, valid: r => r.tvoc.valid,
@@ -205,6 +225,8 @@ function buildCards() {
       <div class="value"><span data-value>--</span><span class="unit">${card.unit}</span></div>
       <div class="note" data-note></div>
       <div class="bar"><i data-bar></i></div>
+      <svg class="spark empty" data-spark viewBox="0 0 100 26" preserveAspectRatio="none"
+           aria-hidden="true"></svg>
       <div class="help" id="help-${card.key}" hidden>
         ${card.help.map(line => '<p>' + line + '</p>').join('')}
       </div>
@@ -219,6 +241,45 @@ function buildCards() {
     help.hidden = !help.hidden;
     button.setAttribute('aria-expanded', String(!help.hidden));
   });
+}
+
+// The device keeps working with the password that ships with the firmware, but that password is public, so
+// the page says so rather than staying quiet about it.
+function renderBanners(status) {
+  const notices = [];
+  const security = status.security || {};
+
+  if (security.adminPasswordEmpty)
+    notices.push(['severe', 'No admin password is set. Anyone who can reach this device can change its '
+      + 'settings and upload firmware to it. <a href="/settings">Set one now</a>.']);
+  else if (security.adminPasswordDefault)
+    notices.push(['', 'The admin password is still the one built into the firmware, which is public. '
+      + '<a href="/settings">Change it</a>.']);
+
+  // A sensor that never answered is either not fitted or not wired; one that answered and went quiet is a
+  // different problem, and worth telling apart.
+  const readings = status.readings;
+  const silent = [
+    ['CO2', readings.co2], ['particulate', readings.pm25], ['TVOC', readings.tvoc],
+    ['temperature and humidity', readings.climate], ['pressure', readings.pressure],
+  ].filter(([, reading]) => reading.detected && !reading.valid).map(([name]) => name);
+
+  // Held back for the first minute: the particulate sensor takes 40 seconds to stream its first frame and
+  // the CO2 sensor is polled every five, so a fresh boot would otherwise flag every one of them
+  const missing = status.uptimeSeconds < 60 ? [] : [
+    ['CO2', readings.co2], ['particulate', readings.pm25], ['TVOC', readings.tvoc],
+    ['temperature and humidity', readings.climate], ['pressure', readings.pressure],
+  ].filter(([, reading]) => !reading.detected).map(([name]) => name);
+
+  if (silent.length)
+    notices.push(['severe', 'Stopped answering: ' + silent.join(', ') + '.']);
+
+  if (missing.length)
+    notices.push(['', 'Never answered since boot: ' + missing.join(', ')
+      + '. Check the wiring, the device keeps probing.']);
+
+  el('banners').innerHTML = notices
+    .map(([level, text]) => `<div class="banner ${level}"><p>${text}</p></div>`).join('');
 }
 
 function renderStatus(status) {
@@ -253,14 +314,20 @@ function renderStatus(status) {
     bar.className = level ? 'bg-' + level : 'bg-good';
   }
 
-  el('info').innerHTML = [
+  const rows = [
     ['Firmware', status.version],
     ['Hostname', status.network.hostname],
     ['IP address', status.network.ip],
     ['MAC address', status.network.mac],
     ['Uptime', formatUptime(status.uptimeSeconds)],
-    ['Free heap', (status.freeHeap / 1024).toFixed(1) + ' KiB'],
-  ].map(([key, value]) => `<div><span>${key}</span><br>${value}</div>`).join('');
+    ['Free heap', (status.freeHeap / 1024).toFixed(1) + ' KiB'
+      + (status.heapFragmentation !== undefined ? ' - ' + status.heapFragmentation + '% fragmented' : '')],
+  ];
+
+  el('info').innerHTML = rows
+    .map(([key, value]) => `<div><span>${key}</span><br>${value}</div>`).join('');
+
+  renderBanners(status);
 }
 
 function formatUptime(seconds) {
@@ -268,6 +335,53 @@ function formatUptime(seconds) {
   const hours = Math.floor(seconds % 86400 / 3600);
   const minutes = Math.floor(seconds % 3600 / 60);
   return (days ? days + 'd ' : '') + hours + 'h ' + minutes + 'm';
+}
+
+// Turns a series into one polyline per run of consecutive readings, so a gap where the sensor had nothing
+// to give stays a gap instead of a line drawn straight through it.
+function sparkPaths(samples) {
+  const values = samples.filter(sample => sample !== null);
+  if (values.length < 2) return '';
+
+  let low = Math.min(...values);
+  let high = Math.max(...values);
+
+  // A flat series would divide by zero, and it belongs in the middle of the box rather than on its floor
+  if (high - low < 1e-9) {
+    low -= 1;
+    high += 1;
+  }
+
+  const x = index => samples.length < 2 ? 0 : index / (samples.length - 1) * 100;
+  const y = value => 25 - (value - low) / (high - low) * 24;
+
+  const segments = [];
+  let current = [];
+
+  for (let index = 0; index < samples.length; ++index) {
+    if (samples[index] === null) {
+      if (current.length > 1) segments.push(current);
+      current = [];
+      continue;
+    }
+
+    current.push(x(index).toFixed(2) + ',' + y(samples[index]).toFixed(2));
+  }
+
+  if (current.length > 1) segments.push(current);
+
+  return segments.map(points => `<polyline points="${points.join(' ')}"/>`).join('');
+}
+
+function renderHistory(history) {
+  for (const card of CARDS) {
+    const node = el('card-' + card.key);
+    const spark = node.querySelector('[data-spark]');
+    const paths = sparkPaths(history.series[card.key] || []);
+
+    spark.innerHTML = paths;
+    spark.classList.toggle('empty', paths === '');
+  }
 }
 
 async function refresh() {
@@ -280,9 +394,20 @@ async function refresh() {
   }
 }
 
+// The window only advances one slot a minute, so it is fetched far less often than the readings and a
+// failure is simply ignored: the sparkline is the one part of the page nobody needs an error about.
+async function refreshHistory() {
+  try {
+    const response = await fetch('/api/history', { cache: 'no-store' });
+    renderHistory(await response.json());
+  } catch (error) {}
+}
+
 buildCards();
 refresh();
+refreshHistory();
 setInterval(refresh, 3000);
+setInterval(refreshHistory, 60000);
 </script>
 </body>
 </html>
@@ -300,10 +425,18 @@ const char WEB_SETTINGS[] PROGMEM = R"rawliteral(<title>Settings</title>
   </header>
   <p class="sub">Saving restarts the device.</p>
 
+  <div id="banners"></div>
+
     <form class="panel" id="settings">
       <div class="rows">
         <div><label for="deviceId">Device id</label><input type="text" id="deviceId" name="deviceId"></div>
-        <div><label for="wifiSsid">WiFi network</label><input type="text" id="wifiSsid" name="wifiSsid"></div>
+        <div class="field-row">
+          <div><label for="wifiSsid">WiFi network</label>
+            <input type="text" id="wifiSsid" name="wifiSsid" list="networks" autocomplete="off">
+            <datalist id="networks"></datalist>
+          </div>
+          <button type="button" id="scan" title="List the networks in range">Scan</button>
+        </div>
         <div><label for="wifiPassword">WiFi password</label><input type="password" id="wifiPassword" name="wifiPassword" placeholder="unchanged"></div>
         <div class="check"><input type="checkbox" id="batteryEnabled" name="batteryEnabled"><label for="batteryEnabled" style="margin:0">Battery shield fitted</label></div>
         <div><label for="batteryVoltageScale">Battery ADC scale (V)</label><input type="number" id="batteryVoltageScale" name="batteryVoltageScale" step="0.01" min="1"></div>
@@ -347,7 +480,10 @@ const char WEB_SETTINGS[] PROGMEM = R"rawliteral(<title>Settings</title>
         <a class="btn" href="/update">Firmware update</a>
         <button id="calibrate">Calibrate CO2</button>
         <button id="reboot">Reboot</button>
+        <button id="factory-reset">Factory reset</button>
       </div>
+      <p class="hint">A factory reset clears every setting, the WiFi credentials and the admin password
+        included, and drops the stored CO2 sensor baseline. The device comes back up in setup mode.</p>
     </div>
   </section>
 </div>
@@ -404,6 +540,51 @@ el('settings').addEventListener('submit', async event => {
 
 el('reload').addEventListener('click', () => loadSettings());
 
+// The scan runs asynchronously on the device, so the first answer only says it started
+const scanButton = el('scan');
+
+async function pollScan(attemptsLeft) {
+  const response = await send('/api/scan');
+  if (!response.ok) {
+    toast('Scan failed');
+    return false;
+  }
+
+  const result = await response.json();
+
+  if (result.scanning) {
+    if (attemptsLeft === 0) {
+      toast('Scan timed out');
+      return false;
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 700));
+    return pollScan(attemptsLeft - 1);
+  }
+
+  el('networks').innerHTML = result.networks
+    .map(network => `<option value="${network.ssid.replace(/"/g, '&quot;')}">`
+      + `${network.rssi} dBm${network.secured ? '' : ', open'}</option>`).join('');
+
+  toast(result.networks.length
+    ? result.networks.length + ' network(s) found, open the field to pick one'
+    : 'No network found');
+
+  return true;
+}
+
+scanButton.addEventListener('click', async () => {
+  scanButton.disabled = true;
+  scanButton.textContent = 'Scanning';
+
+  try {
+    await pollScan(12);
+  } finally {
+    scanButton.disabled = false;
+    scanButton.textContent = 'Scan';
+  }
+});
+
 el('reboot').addEventListener('click', async () => {
   if (!confirm('Reboot the sensor?')) return;
   await send('/api/reboot', { method: 'POST' });
@@ -416,7 +597,35 @@ el('calibrate').addEventListener('click', async () => {
   if (response.ok) toast('Calibration started');
 });
 
+// Two confirmations: this one loses the WiFi credentials, so the device is only reachable through its setup
+// access point afterwards
+el('factory-reset').addEventListener('click', async () => {
+  if (!confirm('Clear every setting? The WiFi credentials and the admin password go with them, and the '
+    + 'device will only be reachable through its setup access point.')) return;
+  if (!confirm('Last chance. Reset the device to its factory configuration?')) return;
+
+  const response = await send('/api/factory-reset', { method: 'POST' });
+  if (response.ok) toast('Resetting, look for the setup access point');
+});
+
+// Same warning as the readings page: this one is where it gets acted on
+async function loadBanners() {
+  try {
+    const response = await fetch('/api/status', { cache: 'no-store' });
+    const security = (await response.json()).security || {};
+
+    if (security.adminPasswordEmpty)
+      el('banners').innerHTML = '<div class="banner severe"><p>No admin password is set, so this page and '
+        + 'the firmware upload are open to anyone on the network. Fill in <strong>Admin password</strong> '
+        + 'below.</p></div>';
+    else if (security.adminPasswordDefault)
+      el('banners').innerHTML = '<div class="banner"><p>The admin password is still the one built into the '
+        + 'firmware, which is public. Change it in <strong>Admin password</strong> below.</p></div>';
+  } catch (error) {}
+}
+
 loadSettings();
+loadBanners();
 </script>
 </body>
 </html>

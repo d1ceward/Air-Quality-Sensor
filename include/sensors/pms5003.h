@@ -22,6 +22,10 @@ namespace Pms5003 {
   void begin();
   void loop();
 
+  // True once a valid frame has been decoded. There is nothing to probe on a UART, so a sensor that has
+  // never streamed a frame is indistinguishable from one that is not wired at all.
+  bool isAvailable();
+
   bool hasReading();
   const Data &data();
   uint32_t readingAgeMs();

@@ -68,9 +68,9 @@ namespace Config {
       document["displayNightEndHour"] = source.displayNightEndHour;
       document["showClockPage"] = source.showClockPage;
       document["flipDisplay"] = source.flipDisplay;
-      document["sgpBaselineCo2"] = source.sgpBaselineCo2;
-      document["sgpBaselineTvoc"] = source.sgpBaselineTvoc;
-      document["sgpBaselineEpoch"] = source.sgpBaselineEpoch;
+      // The SGP30 baseline used to live here. It is refreshed every hour, and rewriting the whole
+      // configuration that often put the WiFi credentials at risk on every power cut, so it moved to
+      // BASELINE_PATH and is deliberately not written back.
     }
 
     void deserialize(const JsonDocument &document, AppConfig &target) {
@@ -101,9 +101,11 @@ namespace Config {
       target.displayNightEndHour = document["displayNightEndHour"] | target.displayNightEndHour;
       target.showClockPage = document["showClockPage"] | target.showClockPage;
       target.flipDisplay = document["flipDisplay"] | target.flipDisplay;
-      target.sgpBaselineCo2 = document["sgpBaselineCo2"] | target.sgpBaselineCo2;
-      target.sgpBaselineTvoc = document["sgpBaselineTvoc"] | target.sgpBaselineTvoc;
-      target.sgpBaselineEpoch = document["sgpBaselineEpoch"] | target.sgpBaselineEpoch;
+
+      // Only read, never written back: BaselineStore picks these up once and moves them to its own file
+      target.legacySgpBaselineCo2 = document["sgpBaselineCo2"] | target.legacySgpBaselineCo2;
+      target.legacySgpBaselineTvoc = document["sgpBaselineTvoc"] | target.legacySgpBaselineTvoc;
+      target.legacySgpBaselineEpoch = document["sgpBaselineEpoch"] | target.legacySgpBaselineEpoch;
 
       // A port of 0 would make the web server unreachable
       if (target.httpPort == 0)
@@ -150,6 +152,13 @@ namespace Config {
       return;
     }
 
+    // A temporary file still around means an earlier save was cut short; the target was never touched, so
+    // the leftover is just dropped.
+    if (LittleFS.exists(CONFIG_TMP_PATH)) {
+      Serial.println(F("[config] dropping a leftover temporary file from an interrupted save"));
+      LittleFS.remove(CONFIG_TMP_PATH);
+    }
+
     File file = LittleFS.open(CONFIG_PATH, "r");
     if (!file) {
       Serial.println(F("[config] no config file, using defaults"));
@@ -174,34 +183,76 @@ namespace Config {
     return config;
   }
 
-  bool save() {
+  bool writeJsonAtomically(const char *path, const char *temporaryPath, const JsonDocument &document) {
     if (!filesystemMounted)
       return false;
 
-    JsonDocument document;
-    serialize(config, document);
-
-    File file = LittleFS.open(CONFIG_PATH, "w");
+    // Opening the target itself in "w" truncates it before a single byte is written, so a power cut in
+    // between leaves an empty file and takes the WiFi credentials with it. The rename below is the operation
+    // that replaces the old content, and LittleFS makes it atomic.
+    File file = LittleFS.open(temporaryPath, "w");
     if (!file) {
-      Serial.println(F("[config] unable to open config file for writing"));
+      Serial.printf("[config] unable to open %s for writing\n", temporaryPath);
       return false;
     }
 
-    const bool written = serializeJson(document, file) > 0;
+    const size_t written = serializeJson(document, file);
+    const bool failed = written == 0 || file.getWriteError() != 0;
     file.close();
 
-    if (!written)
-      Serial.println(F("[config] failed to write config file"));
+    if (failed) {
+      Serial.printf("[config] failed to write %s\n", temporaryPath);
+      LittleFS.remove(temporaryPath);
+      return false;
+    }
 
-    return written;
+    // LittleFS replaces an existing destination on its own, but an interrupted earlier attempt can leave the
+    // filesystem in a state where it refuses, so the fallback clears the way and tries once more.
+    if (LittleFS.rename(temporaryPath, path))
+      return true;
+
+    LittleFS.remove(path);
+    if (LittleFS.rename(temporaryPath, path))
+      return true;
+
+    Serial.printf("[config] unable to rename %s over %s\n", temporaryPath, path);
+    LittleFS.remove(temporaryPath);
+
+    return false;
+  }
+
+  bool save() {
+    JsonDocument document;
+    serialize(config, document);
+
+    return writeJsonAtomically(CONFIG_PATH, CONFIG_TMP_PATH, document);
   }
 
   void reset() {
     applyDefaults(config);
+
+    // The baseline is calibration of the sensor that was in this room, so it goes with the rest
+    if (filesystemMounted) {
+      LittleFS.remove(BASELINE_PATH);
+      LittleFS.remove(BASELINE_TMP_PATH);
+    }
+
     save();
   }
 
   bool hasWifiCredentials() {
     return config.wifiSsid.length() > 0;
+  }
+
+  bool usesDefaultAdminPassword() {
+    return config.adminPassword == DEFAULT_ADMIN_PASSWORD;
+  }
+
+  bool hasNoAdminPassword() {
+    return config.adminPassword.length() == 0;
+  }
+
+  bool isStorageAvailable() {
+    return filesystemMounted;
   }
 }

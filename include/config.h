@@ -8,7 +8,7 @@
 
 // Project identification
 constexpr char PROJECT_NAME[] = "Air Quality Sensor";
-constexpr char PROJECT_VERSION[] = "1.1.0";
+constexpr char PROJECT_VERSION[] = "1.2.0";
 
 // Serial
 constexpr uint32_t SERIAL_BAUD_RATE = 115200U;
@@ -50,6 +50,10 @@ constexpr uint32_t PMS_SLEEP_MS = 300000U;   // fan off between measurements
 // A reading older than this is reported as unavailable
 constexpr uint32_t READING_MAX_AGE_MS = 300000U;
 
+// A sensor that did not answer at boot is probed again on this interval. A bus still wedged when setup() ran,
+// or a connector reseated while the board is powered, otherwise costs a reboot.
+constexpr uint32_t SENSOR_RETRY_INTERVAL_MS = 30000U;
+
 // The particulate reading is only refreshed once per duty cycle, so it needs a longer validity window than
 // the continuously sampled sensors. Derived from the cycle itself (one cycle and a half) so both stay
 // consistent when the timings above are changed.
@@ -59,6 +63,13 @@ constexpr uint32_t PMS_READING_MAX_AGE_MS =
 // SGP30 baseline is persisted so the sensor recovers its calibration on boot
 constexpr uint32_t SGP30_BASELINE_SAVE_INTERVAL_MS = 3600000U;  // 1 h
 constexpr uint32_t SGP30_BASELINE_MAX_AGE_S = 7U * 24U * 3600U; // 1 week
+
+// -----------------------------------------------------------------------------------------------------------
+// Trend window kept in RAM for the web UI
+// -----------------------------------------------------------------------------------------------------------
+
+// History::CAPACITY slots at this interval, so two hours by default
+constexpr uint32_t HISTORY_SAMPLE_INTERVAL_MS = 60000U;
 
 // -----------------------------------------------------------------------------------------------------------
 // Display
@@ -86,7 +97,7 @@ constexpr uint32_t BATTERY_INTERVAL_MS = 10000U;
 // a mean would average them in.
 constexpr uint8_t BATTERY_ADC_SAMPLES = 15U;
 // Conversions taken back to back all see the same radio activity, so the burst is spread over about 60 ms
-// rather than 15.
+// rather than 15. One conversion is taken per loop() iteration, so this is a floor and not a delay.
 constexpr uint32_t BATTERY_ADC_SAMPLE_GAP_MS = 4U;
 constexpr float BATTERY_ADC_FULL_SCALE = 1023.0f;
 // Weight of a new burst in the running voltage. At one burst every 10 s a real step is followed in about a
@@ -116,10 +127,24 @@ constexpr char ADMIN_USER[] = "admin";
 
 // Fallback access point used when no WiFi network is configured or reachable
 constexpr char SETUP_AP_PASSWORD[] = "airquality";
+// Wildcard DNS on the access point, so a phone joining it lands on the settings page on its own instead of
+// having to be pointed at 192.168.4.1 by hand.
+constexpr uint16_t CAPTIVE_PORTAL_DNS_PORT = 53U;
 // Association plus DHCP after a warm reset regularly takes more than 20 s, and every second under it is a
 // boot that lands in setup mode while the network was fine.
 constexpr uint32_t WIFI_CONNECT_TIMEOUT_MS = 30000U;
 constexpr uint32_t WIFI_RETRY_INTERVAL_MS = 30000U;
 
-// Configuration file on the LittleFS partition
+// -----------------------------------------------------------------------------------------------------------
+// Files on the LittleFS partition
+// -----------------------------------------------------------------------------------------------------------
+
 constexpr char CONFIG_PATH[] = "/config.json";
+// Written next to the target and renamed over it, so a power cut during a save cannot leave a truncated
+// configuration behind
+constexpr char CONFIG_TMP_PATH[] = "/config.json.tmp";
+
+// The SGP30 baseline is refreshed every hour. Keeping it out of the configuration means that hourly write
+// cannot take the WiFi credentials down with it.
+constexpr char BASELINE_PATH[] = "/sgp30.json";
+constexpr char BASELINE_TMP_PATH[] = "/sgp30.json.tmp";
