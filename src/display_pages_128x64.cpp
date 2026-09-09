@@ -23,19 +23,29 @@ namespace DisplayPages {
       oled.drawLine(41, 14, 41, 64);
       oled.drawLine(86, 14, 86, 64);
 
+      // Humidity hugs the right edge so the gap left for the pressure grows back on the usual two digit
+      // values instead of staying sized for "100%".
+      int16_t humidityX = 128;
       oled.setFont(u8g2_font_t0_16_tf);
       if (readings.hasClimate) {
         oled.drawUTF8(2, 10, (String(readings.temperatureC, 1) + "°C").c_str());
-        oled.drawStr(96, 10, (String(static_cast<int>(readings.humidity + 0.5f)) + "%").c_str());
+
+        const String humidity = String(static_cast<int>(readings.humidity + 0.5f)) + "%";
+        humidityX = 127 - static_cast<int16_t>(oled.getStrWidth(humidity.c_str()));
+        oled.drawStr(humidityX, 10, humidity.c_str());
       } else {
         oled.drawStr(2, 10, "--");
       }
 
-      // Pressure fits in the gap left between temperature and humidity. It starts at 60 so a negative two
-      // digit temperature cannot run into it.
+      // Pressure fits in the gap left between temperature and humidity. It is right aligned a few pixels
+      // clear of the humidity, and never starts before 58 so a negative two digit temperature cannot run
+      // into it.
       if (readings.hasPressure) {
         oled.setFont(u8g2_font_5x7_tf);
-        oled.drawStr(60, 9, (String(lroundf(readings.pressureHpa)) + "hPa").c_str());
+
+        const String pressure = String(lroundf(readings.pressureHpa)) + "hPa";
+        const int16_t pressureX = humidityX - 4 - static_cast<int16_t>(oled.getStrWidth(pressure.c_str()));
+        oled.drawStr(pressureX < 58 ? 58 : pressureX, 9, pressure.c_str());
       }
 
       oled.setFont(u8g2_font_t0_16_tf);
