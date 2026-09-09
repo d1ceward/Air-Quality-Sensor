@@ -45,9 +45,22 @@ h1 { font-size: 20px; margin: 0; font-weight: 600; }
   background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
   padding: 14px 16px 16px;
 }
+.card .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .card .label {
   font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted);
 }
+.help-toggle {
+  flex: none; width: 18px; height: 18px; padding: 0; border-radius: 999px;
+  border: 1px solid var(--line); background: transparent; color: var(--muted);
+  font: inherit; font-size: 11px; line-height: 1; cursor: pointer;
+}
+.help-toggle:hover, .help-toggle[aria-expanded=true] { color: var(--accent); border-color: var(--accent); }
+.help {
+  font-size: 12px; color: var(--muted); margin-top: 12px; padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.help p { margin: 0 0 6px; }
+.help p:last-child { margin: 0; }
 .card .value { font-size: 34px; font-weight: 650; line-height: 1.1; margin-top: 6px; font-variant-numeric: tabular-nums; }
 .card .unit { font-size: 14px; font-weight: 400; color: var(--muted); margin-left: 4px; }
 .card .note { font-size: 12px; color: var(--muted); margin-top: 6px; min-height: 18px; }
@@ -114,24 +127,54 @@ const char WEB_STATUS[] PROGMEM = R"rawliteral(<title>Air Quality Sensor</title>
 <script>
 const CARDS = [
   { key: 'co2', label: 'CO2', unit: 'ppm', max: 2500, steps: [800, 1200, 2000],
-    value: r => r.co2.value, valid: r => r.co2.valid },
+    value: r => r.co2.value, valid: r => r.co2.valid,
+    help: [
+      'Carbon dioxide concentration, an indicator of how effectively the room is ventilated. Levels rise as occupants breathe and fall once the air is renewed.',
+      'Outdoor air is typically around 420 ppm. Above 1200 ppm, ventilation is advisable; above 2000 ppm, comfort and concentration are measurably affected.',
+    ] },
   { key: 'pm25', label: 'PM2.5', unit: 'ug/m3', max: 150, steps: [12, 35, 55],
     value: r => r.pm25.value, valid: r => r.pm25.valid,
-    note: r => 'AQI US ' + r.pm25.aqius + (r.pm25.fanRunning ? ' - fan running' : ' - fan asleep') },
+    note: r => 'AQI US ' + r.pm25.aqius + (r.pm25.fanRunning ? ' - fan running' : ' - fan asleep'),
+    help: [
+      'Concentration of fine particles small enough to reach the lower airways. Common indoor sources are cooking, combustion, candles and outdoor pollution entering the room.',
+      'A measurement cycle runs every 5 minutes, so the displayed value reflects the most recent cycle rather than the present instant.',
+      'AQI US expresses the same concentration on the standard 0 to 500 air quality index: below 50 is good, above 100 is considered unhealthy.',
+    ] },
   { key: 'tvoc', label: 'TVOC', unit: 'ppb', max: 2200, steps: [220, 660, 1430],
     value: r => r.tvoc.value, valid: r => r.tvoc.valid,
-    note: r => 'eCO2 ' + r.tvoc.eco2 + ' ppm' },
+    note: r => 'eCO2 ' + r.tvoc.eco2 + ' ppm',
+    help: [
+      'Total volatile organic compounds: a combined indicator of airborne chemical pollutants such as solvents, cleaning agents, paints, cooking vapours and emissions from new furnishings.',
+      'The reading tracks variation against the ambient baseline rather than an absolute concentration. Brief peaks after cooking or cleaning are expected and usually clear within the hour; sustained high values call for ventilation.',
+      'eCO2 is an estimated CO2 equivalent derived from the same chemical signal. It is an approximation given for reference; the CO2 reading is the measured value.',
+    ] },
   { key: 'pressure', label: 'Pressure', unit: 'hPa', min: 950, max: 1050, steps: [null],
     value: r => r.pressure.value.toFixed(1), valid: r => r.pressure.valid,
-    note: r => 'sea level ' + r.pressure.seaLevel.toFixed(1) + ' hPa' },
+    note: r => 'sea level ' + r.pressure.seaLevel.toFixed(1) + ' hPa',
+    help: [
+      'Atmospheric pressure at the device. The trend carries more information than the absolute value: a sustained fall generally precedes unsettled weather, a rise more stable conditions.',
+      'The sea level figure is the same measurement corrected for the configured station altitude, which allows direct comparison with published forecasts.',
+    ] },
   { key: 'battery', label: 'Battery', unit: '%', max: 100, steps: [null],
     value: r => r.battery.percent, valid: r => r.battery.valid,
     show: r => r.battery.enabled,
-    note: r => r.battery.volts.toFixed(2) + ' V' },
+    note: r => r.battery.volts.toFixed(2) + ' V',
+    help: [
+      'Remaining charge of the battery pack. The card is shown only when a battery is fitted.',
+      'The percentage is derived from the pack voltage. It can hold steady for long periods and then drop quickly towards the end of the discharge, which is the normal behaviour of a lithium cell.',
+    ] },
   { key: 'temperature', label: 'Temperature', unit: '°C', max: 40, steps: [null],
-    value: r => r.climate.temperature.toFixed(1), valid: r => r.climate.valid },
+    value: r => r.climate.temperature.toFixed(1), valid: r => r.climate.valid,
+    help: [
+      'Ambient air temperature.',
+      'The measurement is taken inside the enclosure, so the reading can sit marginally above the true room temperature.',
+    ] },
   { key: 'humidity', label: 'Humidity', unit: '%', max: 100, steps: [null],
-    value: r => r.climate.humidity.toFixed(0), valid: r => r.climate.valid },
+    value: r => r.climate.humidity.toFixed(0), valid: r => r.climate.valid,
+    help: [
+      'Relative humidity. A range of 40 to 60 percent is generally considered comfortable: drier air causes irritation and static, damper air favours condensation and mould.',
+      'The value is expressed relative to the maximum the air can hold at its current temperature, so it varies as the room warms or cools even when the moisture content is unchanged.',
+    ] },
 ];
 
 const grade = (value, steps) => {
@@ -154,11 +197,28 @@ function toast(message) {
 function buildCards() {
   el('cards').innerHTML = CARDS.map(card => `
     <div class="card" id="card-${card.key}">
-      <div class="label">${card.label}</div>
+      <div class="head">
+        <div class="label">${card.label}</div>
+        <button class="help-toggle" type="button" data-help="${card.key}" aria-expanded="false"
+                aria-controls="help-${card.key}" title="About ${card.label}">?</button>
+      </div>
       <div class="value"><span data-value>--</span><span class="unit">${card.unit}</span></div>
       <div class="note" data-note></div>
       <div class="bar"><i data-bar></i></div>
+      <div class="help" id="help-${card.key}" hidden>
+        ${card.help.map(line => '<p>' + line + '</p>').join('')}
+      </div>
     </div>`).join('');
+
+  // One listener on the grid, as the cards are rebuilt only here but toggled often
+  el('cards').addEventListener('click', event => {
+    const button = event.target.closest('.help-toggle');
+    if (!button) return;
+
+    const help = el('help-' + button.dataset.help);
+    help.hidden = !help.hidden;
+    button.setAttribute('aria-expanded', String(!help.hidden));
+  });
 }
 
 function renderStatus(status) {
