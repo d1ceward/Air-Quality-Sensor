@@ -10,7 +10,7 @@ protocol is implemented locally.
 
 ## Features
 
-- Prometheus metrics on `/metrics`, metric names unchanged from the original firmware
+- Prometheus metrics on `/metrics`, every name under an `air_quality_` prefix
 - Web UI with live readings, a two hour trend per reading, device information and
   full configuration
 - OTA updates, both from PlatformIO over the network and from a browser
