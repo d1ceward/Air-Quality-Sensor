@@ -395,27 +395,3 @@ device comes back up on its setup access point.
 answer a scrape and serve a page, and both need it awake. Waking on a timer also
 means wiring D0 to RST on the board, which not every build has. Autonomy on the
 shield is a matter of hours, and that is the trade.
-
-## Differences from the original sketch
-
-- No AirGradient library: the PMS5003 frame parser, the SenseAir S8 Modbus
-  client and the sensor scheduling are implemented in this repository
-- Credentials and network settings moved out of the source into `/config.json`
-- SGP30 sampled at 1 Hz as its baseline algorithm requires, with the baseline
-  saved hourly and restored on boot
-- SenseAir S8 responses validated with a Modbus CRC instead of scanning for a
-  start byte
-- PM2.5 averaged over a sampling window instead of a single frame
-- NTP with real timezone rules, replacing the fixed `+2 h` offset. The default
-  `CET-1CEST,M3.5.0,M10.5.0/3` is French time: CET in winter, CEST in summer,
-  switching on the last Sunday of March at 02:00 and the last Sunday of October
-  at 03:00, which the C library applies on its own. The web UI shows which of
-  the two is in force next to the clock.
-- US AQI computed with the official EPA breakpoints, revised in February 2024
-  along with the annual PM2.5 standard that went from 12.0 to 9.0 ug/m3. Firmware
-  1.1.0 and earlier used the previous table, so the index reads higher for the
-  same concentration: 10 ug/m3 gives 53 where it used to give 42. A dashboard
-  spanning the upgrade shows a step at that point.
-- Barometric pressure added with the BMP180. Its own temperature reading is only
-  exposed on `/api/status` for diagnostics: the die self-heats, so the SHT3x
-  remains the source of the `temp` metric
