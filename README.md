@@ -85,6 +85,14 @@ there, and a LiPo taken to its cut-off under load ages faster.
 A percentage under load reads low: a LiPo sags by 50 to 100 mV at this current,
 and the curve is steep in that region.
 
+The 100 % end of the curve is anchored on `batteryFullVolts`, 4.15 V by default,
+rather than on the 4.20 V a charger terminates at. A cell relaxes below its
+termination voltage once the current stops, and the fan of the PMS5003 pulls it
+down further, so anchoring at 4.20 V leaves a full battery reading 97 %. Set it
+from the settings page to the voltage the status page shows just after a full
+charge. Only the segment above 90 % moves with it; the rest of the curve and the
+cut-off are properties of the chemistry and stay where they are.
+
 ### Night dimming
 
 The panel contrast drops inside a configurable window, 22:00 to 07:00 by

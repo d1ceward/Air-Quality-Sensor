@@ -133,6 +133,7 @@ namespace WebUI {
       document["altitudeMeters"] = config.altitudeMeters;
       document["batteryEnabled"] = config.batteryEnabled;
       document["batteryVoltageScale"] = config.batteryVoltageScale;
+      document["batteryFullVolts"] = config.batteryFullVolts;
       document["displayType"] = config.displayType;
       document["displayBrightness"] = config.displayBrightness;
       document["displayNightBrightness"] = config.displayNightBrightness;
@@ -187,6 +188,11 @@ namespace WebUI {
 
       if (config.batteryVoltageScale <= 0.0f)
         config.batteryVoltageScale = DEFAULT_BATTERY_VOLTAGE_SCALE;
+
+      config.batteryFullVolts = document["batteryFullVolts"] | config.batteryFullVolts;
+
+      if (config.batteryFullVolts < BATTERY_FULL_VOLTS_MIN || config.batteryFullVolts > BATTERY_FULL_VOLTS_MAX)
+        config.batteryFullVolts = DEFAULT_BATTERY_FULL_VOLTS;
 
       config.displayBrightness = document["displayBrightness"] | config.displayBrightness;
       config.displayNightBrightness = document["displayNightBrightness"] | config.displayNightBrightness;

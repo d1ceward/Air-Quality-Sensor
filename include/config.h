@@ -110,6 +110,15 @@ constexpr uint8_t BATTERY_PERCENT_DEADBAND = 3U;
 // converter corresponds to on the cell: 4.2 V for the 100k shield fitted here, 4.5 V for the 130k of the
 // standard one. Overridden by the batteryVoltageScale setting.
 constexpr float DEFAULT_BATTERY_VOLTAGE_SCALE = 4.2f;
+// What this board reads on a freshly charged cell, which anchors the 100 % end of the curve. A charger cuts
+// out at 4.2 V, but the cell relaxes to about 4.15 V once the current stops and the fan of the PMS5003 pulls
+// it down further, so anchoring at 4.2 V leaves a full battery stuck a few points short. Adjust it to the
+// voltage the device settles on after a full charge. Overridden by the batteryFullVolts setting.
+constexpr float DEFAULT_BATTERY_FULL_VOLTS = 4.15f;
+// Bounds of that setting. Below the lower one the top of the curve would swallow most of the charge, above
+// the upper one no cell would ever reach 100 %.
+constexpr float BATTERY_FULL_VOLTS_MIN = 3.90f;
+constexpr float BATTERY_FULL_VOLTS_MAX = 4.35f;
 
 // -----------------------------------------------------------------------------------------------------------
 // Network

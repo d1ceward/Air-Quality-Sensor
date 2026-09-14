@@ -50,6 +50,44 @@ void test_is_monotonic() {
   }
 }
 
+// A charger cuts out at 4.2 V but the cell relaxes below it, so without a lower anchor a full battery reads
+// 97 % and never gets to 100 %
+void test_anchors_the_full_end_on_the_configured_voltage() {
+  TEST_ASSERT_EQUAL_UINT8(97, BatteryCurve::percentFromVolts(4.17f));
+  TEST_ASSERT_EQUAL_UINT8(100, BatteryCurve::percentFromVolts(4.17f, 4.15f));
+  TEST_ASSERT_EQUAL_UINT8(100, BatteryCurve::percentFromVolts(4.15f, 4.15f));
+}
+
+// Halfway between 4.10 V at 90 % and the 4.15 V anchor at 100 %
+void test_interpolates_against_the_anchor() {
+  TEST_ASSERT_EQUAL_UINT8(95, BatteryCurve::percentFromVolts(4.125f, 4.15f));
+}
+
+// The chemistry below 90 % does not move with the anchor
+void test_leaves_the_rest_of_the_curve_alone() {
+  TEST_ASSERT_EQUAL_UINT8(90, BatteryCurve::percentFromVolts(4.10f, 4.15f));
+  TEST_ASSERT_EQUAL_UINT8(85, BatteryCurve::percentFromVolts(4.05f, 4.15f));
+  TEST_ASSERT_EQUAL_UINT8(50, BatteryCurve::percentFromVolts(3.82f, 4.15f));
+  TEST_ASSERT_EQUAL_UINT8(0, BatteryCurve::percentFromVolts(3.00f, 4.15f));
+}
+
+// An anchor at or below the 90 % point would divide by a zero or negative span
+void test_clamps_an_anchor_under_the_top_point() {
+  TEST_ASSERT_EQUAL_UINT8(100, BatteryCurve::percentFromVolts(4.12f, 3.00f));
+  TEST_ASSERT_EQUAL_UINT8(80, BatteryCurve::percentFromVolts(4.00f, 4.00f));
+  TEST_ASSERT_EQUAL_UINT8(90, BatteryCurve::percentFromVolts(4.10f, 0.0f));
+}
+
+void test_is_monotonic_against_an_anchor() {
+  uint8_t previous = 100;
+
+  for (int millivolts = 4300; millivolts >= 2500; millivolts -= 5) {
+    const uint8_t percent = BatteryCurve::percentFromVolts(millivolts / 1000.0f, 4.15f);
+    TEST_ASSERT_LESS_OR_EQUAL_UINT8(previous, percent);
+    previous = percent;
+  }
+}
+
 // A converter step is about 4.4 mV, which the curve turns into a couple of points around 3.8 V: the reading
 // has to stay put through that much drift
 void test_holds_the_reading_inside_the_deadband() {
@@ -84,6 +122,11 @@ int main() {
   RUN_TEST(test_interpolates_between_two_points);
   RUN_TEST(test_is_not_linear);
   RUN_TEST(test_is_monotonic);
+  RUN_TEST(test_anchors_the_full_end_on_the_configured_voltage);
+  RUN_TEST(test_interpolates_against_the_anchor);
+  RUN_TEST(test_leaves_the_rest_of_the_curve_alone);
+  RUN_TEST(test_clamps_an_anchor_under_the_top_point);
+  RUN_TEST(test_is_monotonic_against_an_anchor);
   RUN_TEST(test_holds_the_reading_inside_the_deadband);
   RUN_TEST(test_follows_a_move_past_the_deadband);
   RUN_TEST(test_always_reports_the_ends);

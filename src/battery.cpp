@@ -56,11 +56,12 @@ namespace Battery {
       if (hasSample) {
         smoothedVolts += BATTERY_VOLTS_SMOOTHING * (volts - smoothedVolts);
         reportedPercent = BatteryCurve::stablePercent(reportedPercent,
-            BatteryCurve::percentFromVolts(smoothedVolts), BATTERY_PERCENT_DEADBAND);
+            BatteryCurve::percentFromVolts(smoothedVolts, Config::get().batteryFullVolts),
+            BATTERY_PERCENT_DEADBAND);
       } else {
         // Nothing to average against yet, so the first burst stands as it is
         smoothedVolts = volts;
-        reportedPercent = BatteryCurve::percentFromVolts(smoothedVolts);
+        reportedPercent = BatteryCurve::percentFromVolts(smoothedVolts, Config::get().batteryFullVolts);
         hasSample = true;
 
         Serial.printf("[battery] %.2f V, %u%%\n", smoothedVolts, reportedPercent);

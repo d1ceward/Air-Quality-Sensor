@@ -27,6 +27,7 @@ namespace Config {
       target.timezone = DEFAULT_TIMEZONE;
       target.displayType = DISPLAY_TYPE_SH1106_128X64;
       target.batteryVoltageScale = DEFAULT_BATTERY_VOLTAGE_SCALE;
+      target.batteryFullVolts = DEFAULT_BATTERY_FULL_VOLTS;
       target.displayBrightness = DEFAULT_DISPLAY_BRIGHTNESS;
       target.displayNightBrightness = DEFAULT_DISPLAY_NIGHT_BRIGHTNESS;
       target.displayNightStartHour = DEFAULT_DISPLAY_NIGHT_START_HOUR;
@@ -61,6 +62,7 @@ namespace Config {
       document["altitudeMeters"] = source.altitudeMeters;
       document["batteryEnabled"] = source.batteryEnabled;
       document["batteryVoltageScale"] = source.batteryVoltageScale;
+      document["batteryFullVolts"] = source.batteryFullVolts;
       document["displayType"] = source.displayType;
       document["displayBrightness"] = source.displayBrightness;
       document["displayNightBrightness"] = source.displayNightBrightness;
@@ -94,6 +96,7 @@ namespace Config {
       target.altitudeMeters = document["altitudeMeters"] | target.altitudeMeters;
       target.batteryEnabled = document["batteryEnabled"] | target.batteryEnabled;
       target.batteryVoltageScale = document["batteryVoltageScale"] | target.batteryVoltageScale;
+      target.batteryFullVolts = document["batteryFullVolts"] | target.batteryFullVolts;
       target.displayType = document["displayType"] | target.displayType;
       target.displayBrightness = document["displayBrightness"] | target.displayBrightness;
       target.displayNightBrightness = document["displayNightBrightness"] | target.displayNightBrightness;
@@ -122,6 +125,11 @@ namespace Config {
       // A scale of 0 would report a flat battery on a healthy cell
       if (target.batteryVoltageScale <= 0.0f)
         target.batteryVoltageScale = DEFAULT_BATTERY_VOLTAGE_SCALE;
+
+      // An anchor out of range, 0 from a configuration written before the setting existed included, would
+      // peg the reported charge at one end
+      if (target.batteryFullVolts < BATTERY_FULL_VOLTS_MIN || target.batteryFullVolts > BATTERY_FULL_VOLTS_MAX)
+        target.batteryFullVolts = DEFAULT_BATTERY_FULL_VOLTS;
 
       // An hour out of range would make the night window meaningless
       if (target.displayNightStartHour > 23 || target.displayNightEndHour > 23) {

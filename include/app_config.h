@@ -28,6 +28,8 @@ struct AppConfig {
   // Only one of the two boards carries a battery shield, so this stays off
   bool batteryEnabled = false;
   float batteryVoltageScale = 0.0f;
+  // Voltage read on a full cell, anchors the 100 % end of the state of charge curve
+  float batteryFullVolts = 0.0f;
 
   String displayType;   // one of the DISPLAY_TYPE_* identifiers
 

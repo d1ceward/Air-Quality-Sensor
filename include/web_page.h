@@ -440,6 +440,7 @@ const char WEB_SETTINGS[] PROGMEM = R"rawliteral(<title>Settings</title>
         <div><label for="wifiPassword">WiFi password</label><input type="password" id="wifiPassword" name="wifiPassword" placeholder="unchanged"></div>
         <div class="check"><input type="checkbox" id="batteryEnabled" name="batteryEnabled"><label for="batteryEnabled" style="margin:0">Battery shield fitted</label></div>
         <div><label for="batteryVoltageScale">Battery ADC scale (V)</label><input type="number" id="batteryVoltageScale" name="batteryVoltageScale" step="0.01" min="1"></div>
+        <div><label for="batteryFullVolts" title="Voltage the device reads just after a full charge. Read it off the status page with the battery charged and copy it here, otherwise a full cell stops a few points short of 100 %.">Full charge voltage (V)</label><input type="number" id="batteryFullVolts" name="batteryFullVolts" step="0.01" min="3.9" max="4.35"></div>
         <div><label for="displayType">Display</label><select id="displayType" name="displayType">
           <option value="sh1106_128x64">SH1106 128x64</option>
           <option value="ssd1306_64x48">SSD1306 64x48</option>
