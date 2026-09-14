@@ -8,7 +8,7 @@
 
 // Project identification
 constexpr char PROJECT_NAME[] = "Air Quality Sensor";
-constexpr char PROJECT_VERSION[] = "1.2.0";
+constexpr char PROJECT_VERSION[] = "1.3.0";
 
 // Serial
 constexpr uint32_t SERIAL_BAUD_RATE = 115200U;

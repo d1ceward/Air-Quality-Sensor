@@ -32,7 +32,7 @@
       }
     ],
     "cursorSync": "Crosshair",
-    "description": "Readings and device health for the Air Quality Sensor firmware 1.2.0. Metrics are the air_quality_* family exported on /metrics.",
+    "description": "Readings and device health for the Air Quality Sensor firmware 1.3.0. Metrics are the air_quality_* family exported on /metrics.",
     "editable": true,
     "elements": {
       "panel-10": {
