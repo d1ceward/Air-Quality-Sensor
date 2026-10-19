@@ -7,6 +7,7 @@
 #include "app_config.h"
 #include "battery.h"
 #include "config.h"
+#include "console.h"
 #include "display.h"
 #include "history_recorder.h"
 #include "metrics.h"
@@ -64,15 +65,15 @@ static void resetI2cDevices() {
 }
 
 static void printBanner() {
-  Serial.println();
-  Serial.printf("%s %s\n", PROJECT_NAME, PROJECT_VERSION);
-  Serial.printf("chip %06x, flash %u KiB, core %s\n",
+  Console.println();
+  Console.printf("%s %s\n", PROJECT_NAME, PROJECT_VERSION);
+  Console.printf("chip %06x, flash %u KiB, core %s\n",
                 ESP.getChipId(), ESP.getFlashChipRealSize() / 1024, ESP.getCoreVersion().c_str());
 
   // Repeated banners mean the board is restarting; the reason says whether it is a brownout, a watchdog or a
   // crash.
-  Serial.printf("boot: %s\n", ESP.getResetReason().c_str());
-  Serial.printf("reset info: %s\n", ESP.getResetInfo().c_str());
+  Console.printf("boot: %s\n", ESP.getResetReason().c_str());
+  Console.printf("reset info: %s\n", ESP.getResetInfo().c_str());
 }
 
 void setup() {

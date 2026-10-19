@@ -146,6 +146,8 @@ include/
   barometry.h               Pressure conversions, no hardware dependency
   history.h                 Rolling window ring buffer, no hardware dependency
   history_recorder.h        Samples the readings into that window, serves /api/history
+  console.h                 Serial output mirrored into a RAM buffer for /logs
+  log_ring.h                Console ring buffer, no hardware dependency
   hostname.h                RFC 1123 label sanitising, no hardware dependency
   modbus_crc.h              Modbus CRC16, no hardware dependency
   prom_text.h               Prometheus label escaping, no hardware dependency
@@ -175,12 +177,12 @@ pio test -e native
 The environment matters: `pio test` on its own follows `default_envs`, which is
 the firmware, where these suites are ignored and nothing runs.
 
-Seventy five cases cover the PMS5003 frame parser (checksum rejection, resynchro-
+Eighty seven cases cover the PMS5003 frame parser (checksum rejection, resynchro-
 nisation after garbage, payload offsets), the Modbus CRC16 against frames from
 the SenseAir S8 documentation, the EPA breakpoint table, the barometric
 conversions, the LiPo discharge curve, the night window with its midnight wrap,
 the `millis()` rollover accounting, hostname sanitising against RFC 1123,
-Prometheus label escaping and the trend ring buffer. Expected values come from
+Prometheus label escaping, the trend ring buffer and the console log buffer. Expected values come from
 the datasheets, from the EPA tables or from an independent computation, never
 from the implementation under test.
 
@@ -243,6 +245,8 @@ therefore public. Both pages of the UI show a banner until it is changed.
 | GET | `/metrics` | Prometheus exposition |
 | GET | `/api/status` | Readings and device state, JSON |
 | GET | `/api/history` | Two hour trend window, one array per reading, JSON |
+| GET | `/logs` | Serial output followed live, password protected |
+| GET | `/api/logs?since=N` | Serial output from byte offset N, plain text, password protected |
 | GET | `/api/config` | Current configuration, secrets redacted, password protected |
 | POST | `/api/config` | Update configuration, then reboot, password protected |
 | GET | `/api/scan` | Networks in range, password protected |
@@ -258,6 +262,12 @@ hold the radio for a couple of seconds with nothing else in `loop()` running.
 `/api/history` serves the window the UI draws its sparklines from. It is kept in
 RAM only, one sample a minute over a hundred and twenty slots, and starts empty
 after every boot; Prometheus is what keeps the real history.
+
+`/api/logs` returns the last 2 KiB of what the firmware prints on the serial
+port, also kept in RAM only. Offsets count bytes since boot: the `X-Log-Next`
+header is the value to pass as `since` on the next call, and `X-Log-Start` says
+where the answer really begins, which differs from `since` when older bytes were
+overwritten or the device rebooted in between.
 
 ### Authentication
 
@@ -364,6 +374,7 @@ LittleFS partition.
 | Device id | `air-quality-<chipid>` | Prometheus `id` label, hostname and mDNS name |
 | WiFi network, password | empty | Empty password field keeps the stored one |
 | Static IP | off | Address, gateway, subnet and DNS |
+| Keep WiFi radio awake | off | Disables modem sleep, steadier scrapes on a weak signal, about 60 mA more |
 | HTTP port | `80` | |
 | Station altitude | `0` m | Used to reduce pressure to sea level |
 | NTP server | `europe.pool.ntp.org` | |

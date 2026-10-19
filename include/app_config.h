@@ -16,6 +16,10 @@ struct AppConfig {
   IPAddress subnet;
   IPAddress dns;
 
+  // Keeps the radio awake instead of letting the SDK modem sleep between beacons. A station on a weak link
+  // then stops missing incoming scrapes, at the cost of about 60 mA more, which matters on a battery.
+  bool wifiNoSleep = false;
+
   uint16_t httpPort = 0;
   String adminPassword;   // settings, reboot, calibration and firmware upload
 

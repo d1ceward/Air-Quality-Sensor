@@ -4,6 +4,7 @@
 // Local includes
 #include "app_config.h"
 #include "config.h"
+#include "console.h"
 #include "display.h"
 #include "display_pages.h"
 #include "display_schedule.h"
@@ -92,11 +93,11 @@ namespace Display {
     }
 
     if (oled == nullptr) {
-      Serial.println(F("[display] not enough memory for the frame buffer"));
+      Console.println(F("[display] not enough memory for the frame buffer"));
       return;
     }
 
-    Serial.printf("[display] %s\n", config.displayType.c_str());
+    Console.printf("[display] %s\n", config.displayType.c_str());
 
     oled->setBusClock(I2C_BUS_CLOCK_HZ);
     oled->begin();

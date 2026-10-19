@@ -4,6 +4,7 @@
 // Local includes
 #include "app_config.h"
 #include "config.h"
+#include "console.h"
 
 namespace Config {
   namespace {
@@ -55,6 +56,7 @@ namespace Config {
       document["gateway"] = source.gateway.toString();
       document["subnet"] = source.subnet.toString();
       document["dns"] = source.dns.toString();
+      document["wifiNoSleep"] = source.wifiNoSleep;
       document["httpPort"] = source.httpPort;
       document["adminPassword"] = source.adminPassword;
       document["ntpServer"] = source.ntpServer;
@@ -84,6 +86,7 @@ namespace Config {
       target.gateway = parseIp(document["gateway"]);
       target.subnet = parseIp(document["subnet"]);
       target.dns = parseIp(document["dns"]);
+      target.wifiNoSleep = document["wifiNoSleep"] | target.wifiNoSleep;
       target.httpPort = document["httpPort"] | target.httpPort;
       // The key used to be otaPassword, back when it only guarded the upload
       const char *legacyPassword = document["otaPassword"];
@@ -139,7 +142,7 @@ namespace Config {
 
       // An unknown panel would leave the device without a usable display
       if (!isSupportedDisplay(target.displayType)) {
-        Serial.printf("[config] unknown display \"%s\", falling back to %s\n",
+        Console.printf("[config] unknown display \"%s\", falling back to %s\n",
                       target.displayType.c_str(), DISPLAY_TYPE_SH1106_128X64);
         target.displayType = DISPLAY_TYPE_SH1106_128X64;
       }
@@ -151,25 +154,25 @@ namespace Config {
 
     filesystemMounted = LittleFS.begin();
     if (!filesystemMounted) {
-      Serial.println(F("[config] LittleFS mount failed, formatting"));
+      Console.println(F("[config] LittleFS mount failed, formatting"));
       filesystemMounted = LittleFS.format() && LittleFS.begin();
     }
 
     if (!filesystemMounted) {
-      Serial.println(F("[config] LittleFS unavailable, using defaults"));
+      Console.println(F("[config] LittleFS unavailable, using defaults"));
       return;
     }
 
     // A temporary file still around means an earlier save was cut short; the target was never touched, so
     // the leftover is just dropped.
     if (LittleFS.exists(CONFIG_TMP_PATH)) {
-      Serial.println(F("[config] dropping a leftover temporary file from an interrupted save"));
+      Console.println(F("[config] dropping a leftover temporary file from an interrupted save"));
       LittleFS.remove(CONFIG_TMP_PATH);
     }
 
     File file = LittleFS.open(CONFIG_PATH, "r");
     if (!file) {
-      Serial.println(F("[config] no config file, using defaults"));
+      Console.println(F("[config] no config file, using defaults"));
       save();
       return;
     }
@@ -179,12 +182,12 @@ namespace Config {
     file.close();
 
     if (error) {
-      Serial.printf("[config] invalid config file (%s), using defaults\n", error.c_str());
+      Console.printf("[config] invalid config file (%s), using defaults\n", error.c_str());
       return;
     }
 
     deserialize(document, config);
-    Serial.printf("[config] loaded, device id \"%s\"\n", config.deviceId.c_str());
+    Console.printf("[config] loaded, device id \"%s\"\n", config.deviceId.c_str());
   }
 
   AppConfig &get() {
@@ -200,7 +203,7 @@ namespace Config {
     // that replaces the old content, and LittleFS makes it atomic.
     File file = LittleFS.open(temporaryPath, "w");
     if (!file) {
-      Serial.printf("[config] unable to open %s for writing\n", temporaryPath);
+      Console.printf("[config] unable to open %s for writing\n", temporaryPath);
       return false;
     }
 
@@ -209,7 +212,7 @@ namespace Config {
     file.close();
 
     if (failed) {
-      Serial.printf("[config] failed to write %s\n", temporaryPath);
+      Console.printf("[config] failed to write %s\n", temporaryPath);
       LittleFS.remove(temporaryPath);
       return false;
     }
@@ -223,7 +226,7 @@ namespace Config {
     if (LittleFS.rename(temporaryPath, path))
       return true;
 
-    Serial.printf("[config] unable to rename %s over %s\n", temporaryPath, path);
+    Console.printf("[config] unable to rename %s over %s\n", temporaryPath, path);
     LittleFS.remove(temporaryPath);
 
     return false;

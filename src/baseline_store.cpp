@@ -5,6 +5,7 @@
 #include "app_config.h"
 #include "baseline_store.h"
 #include "config.h"
+#include "console.h"
 
 namespace BaselineStore {
   namespace {
@@ -27,7 +28,7 @@ namespace BaselineStore {
         return false;
 
       result = legacy;
-      Serial.println(F("[baseline] migrating the baseline out of the configuration"));
+      Console.println(F("[baseline] migrating the baseline out of the configuration"));
 
       // Moving it across now means the next configuration save drops the old keys for good
       save(result);
@@ -52,7 +53,7 @@ namespace BaselineStore {
     file.close();
 
     if (error) {
-      Serial.printf("[baseline] invalid file (%s), ignoring\n", error.c_str());
+      Console.printf("[baseline] invalid file (%s), ignoring\n", error.c_str());
       return false;
     }
 

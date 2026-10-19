@@ -2,6 +2,7 @@
 
 // Local includes
 #include "config.h"
+#include "console.h"
 #include "modbus_crc.h"
 #include "sensors/senseair_s8.h"
 
@@ -39,14 +40,14 @@ namespace SenseAirS8 {
     void reportFailure(const __FlashStringHelper *reason) {
       // print() knows how to walk a flash string; printf("%s") would read it with unaligned accesses and
       // fault.
-      Serial.print(F("[co2] "));
-      Serial.print(reason);
-      Serial.printf(" (%u/%u bytes:", responseLength, RESPONSE_SIZE);
+      Console.print(F("[co2] "));
+      Console.print(reason);
+      Console.printf(" (%u/%u bytes:", responseLength, RESPONSE_SIZE);
 
       for (uint8_t i = 0; i < responseLength; ++i)
-        Serial.printf(" %02X", response[i]);
+        Console.printf(" %02X", response[i]);
 
-      Serial.println(")");
+      Console.println(")");
     }
 
     void sendRequest() {
@@ -93,7 +94,7 @@ namespace SenseAirS8 {
 
       // The first valid answer confirms the wiring, the rest stays quiet
       if (!hasCo2)
-        Serial.printf("[co2] sensor answering, %u ppm\n", lastCo2);
+        Console.printf("[co2] sensor answering, %u ppm\n", lastCo2);
 
       hasCo2 = true;
       lastCo2Ms = millis();
@@ -143,7 +144,7 @@ namespace SenseAirS8 {
     flushInput();
 
     const size_t written = serial.write(COMMAND_CALIBRATE, sizeof(COMMAND_CALIBRATE));
-    Serial.println(F("[co2] background calibration requested"));
+    Console.println(F("[co2] background calibration requested"));
 
     return written == sizeof(COMMAND_CALIBRATE);
   }
