@@ -396,16 +396,6 @@ drivers, the web server and the display need the hardware and are exercised on t
 page, and both need it awake. Waking on a timer also means wiring D0 to RST, which not every build has.
 Autonomy on the shield is a matter of hours, and that is the trade.
 
-## Upgrading from the single-file firmware
-
-- The web UI now answers on `/`, so a scrape configuration pointing at `/` must be updated to `/metrics`.
-- The default HTTP port is 80 instead of 9926.
-- Every metric is prefixed with `air_quality_`, so short names such as `temp` or `pressure` cannot collide
-  with another exporter scraped by the same Prometheus. Dashboards and alerting rules written against `tvoc`,
-  `co2`, `pm25`, `aqius`, `temp` or `hum` need renaming to `air_quality_tvoc` and so on. The `id` and `mac`
-  labels are unchanged.
-- The AQI follows the EPA table revised in February 2024, so the same concentration reads higher than before.
-
 ## Contributing
 
 Bug reports and pull requests are welcome.
