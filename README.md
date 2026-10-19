@@ -3,10 +3,11 @@
 Firmware for an ESP8266 based air quality station (AirGradient DIY PRO hardware),
 exposing its readings as Prometheus metrics.
 
-Rewritten from the original single-file Arduino sketch
-([docs/original_arduino_software.c](docs/original_arduino_software.c)) as a modular
-PlatformIO project, with no dependency on the AirGradient library: every sensor
-protocol is implemented locally.
+[![CI](https://github.com/d1ceward/Air-Quality-Sensor/actions/workflows/ci.yml/badge.svg)](https://github.com/d1ceward/Air-Quality-Sensor/actions/workflows/ci.yml)
+
+Rewritten from the single-file Arduino sketch AirGradient published for its DIY
+PRO kit as a modular PlatformIO project, with no dependency on the AirGradient
+library: every sensor protocol is implemented locally.
 
 ## Features
 
@@ -194,6 +195,9 @@ are exercised on the device.
 
 ## Build and flash
 
+Requires [PlatformIO](https://platformio.org/install), either the VS Code
+extension or the `pio` command line. Dependencies are fetched on the first build.
+
 ```sh
 # First flash, over USB
 pio run -t upload
@@ -364,6 +368,13 @@ groups:
 past the 49.7 days at which the raw counter wraps back to zero. Firmware 1.1.0
 and earlier reported that wrap as a reboot.
 
+### Grafana
+
+[grafana/dashboard.json](grafana/dashboard.json) is a ready-made dashboard for
+these metrics, in the Grafana 12 dashboard v2 format. Import it, then pick your
+Prometheus data source in the Data source selector at the top. The Station
+selector lists every device by its `id` label.
+
 ## Configuration
 
 Everything below is editable from the web UI and stored in `/config.json` on the
@@ -406,3 +417,7 @@ device comes back up on its setup access point.
 answer a scrape and serve a page, and both need it awake. Waking on a timer also
 means wiring D0 to RST on the board, which not every build has. Autonomy on the
 shield is a matter of hours, and that is the trade.
+
+## License
+
+[MIT](LICENSE)
