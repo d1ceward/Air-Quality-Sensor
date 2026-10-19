@@ -176,6 +176,11 @@ namespace NetWifi {
     }
 
     WiFi.mode(WIFI_STA);
+
+    // Applied once at boot, saving the settings restarts the device anyway
+    if (Config::get().wifiNoSleep)
+      WiFi.setSleepMode(WIFI_NONE_SLEEP);
+
     startConnection();
     Display::showMessage("WiFi", "connecting...");
   }

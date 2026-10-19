@@ -55,6 +55,7 @@ namespace Config {
       document["gateway"] = source.gateway.toString();
       document["subnet"] = source.subnet.toString();
       document["dns"] = source.dns.toString();
+      document["wifiNoSleep"] = source.wifiNoSleep;
       document["httpPort"] = source.httpPort;
       document["adminPassword"] = source.adminPassword;
       document["ntpServer"] = source.ntpServer;
@@ -84,6 +85,7 @@ namespace Config {
       target.gateway = parseIp(document["gateway"]);
       target.subnet = parseIp(document["subnet"]);
       target.dns = parseIp(document["dns"]);
+      target.wifiNoSleep = document["wifiNoSleep"] | target.wifiNoSleep;
       target.httpPort = document["httpPort"] | target.httpPort;
       // The key used to be otaPassword, back when it only guarded the upload
       const char *legacyPassword = document["otaPassword"];

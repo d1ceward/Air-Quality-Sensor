@@ -127,6 +127,7 @@ namespace WebUI {
       document["gateway"] = config.gateway.toString();
       document["subnet"] = config.subnet.toString();
       document["dns"] = config.dns.toString();
+      document["wifiNoSleep"] = config.wifiNoSleep;
       document["httpPort"] = config.httpPort;
       document["ntpServer"] = config.ntpServer;
       document["timezone"] = config.timezone;
@@ -178,6 +179,7 @@ namespace WebUI {
       config.deviceId = document["deviceId"] | config.deviceId;
       config.wifiSsid = document["wifiSsid"] | config.wifiSsid;
       config.useStaticIp = document["useStaticIp"] | config.useStaticIp;
+      config.wifiNoSleep = document["wifiNoSleep"] | config.wifiNoSleep;
       config.httpPort = document["httpPort"] | config.httpPort;
       config.ntpServer = document["ntpServer"] | config.ntpServer;
       config.timezone = document["timezone"] | config.timezone;

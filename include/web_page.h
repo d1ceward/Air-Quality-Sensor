@@ -438,6 +438,7 @@ const char WEB_SETTINGS[] PROGMEM = R"rawliteral(<title>Settings</title>
           <button type="button" id="scan" title="List the networks in range">Scan</button>
         </div>
         <div><label for="wifiPassword">WiFi password</label><input type="password" id="wifiPassword" name="wifiPassword" placeholder="unchanged"></div>
+        <div class="check"><input type="checkbox" id="wifiNoSleep" name="wifiNoSleep"><label for="wifiNoSleep" style="margin:0" title="Turns off WiFi modem sleep. Helps a station on a weak signal answer every scrape, but draws about 60 mA more, so leave it off on battery.">Keep WiFi radio awake</label></div>
         <div class="check"><input type="checkbox" id="batteryEnabled" name="batteryEnabled"><label for="batteryEnabled" style="margin:0">Battery shield fitted</label></div>
         <div><label for="batteryVoltageScale">Battery ADC scale (V)</label><input type="number" id="batteryVoltageScale" name="batteryVoltageScale" step="0.01" min="1"></div>
         <div><label for="batteryFullVolts" title="Voltage the device reads just after a full charge. Read it off the status page with the battery charged and copy it here, otherwise a full cell stops a few points short of 100 %.">Full charge voltage (V)</label><input type="number" id="batteryFullVolts" name="batteryFullVolts" step="0.01" min="3.9" max="4.35"></div>

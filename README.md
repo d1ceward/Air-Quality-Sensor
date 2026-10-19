@@ -364,6 +364,7 @@ LittleFS partition.
 | Device id | `air-quality-<chipid>` | Prometheus `id` label, hostname and mDNS name |
 | WiFi network, password | empty | Empty password field keeps the stored one |
 | Static IP | off | Address, gateway, subnet and DNS |
+| Keep WiFi radio awake | off | Disables modem sleep, steadier scrapes on a weak signal, about 60 mA more |
 | HTTP port | `80` | |
 | Station altitude | `0` m | Used to reduce pressure to sea level |
 | NTP server | `europe.pool.ntp.org` | |
