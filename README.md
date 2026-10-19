@@ -1,7 +1,10 @@
-# Air Quality Sensor
+![](.github/images/air_quality_sensor.svg)
 
-[![CI](https://github.com/d1ceward/Air-Quality-Sensor/actions/workflows/ci.yml/badge.svg)](https://github.com/d1ceward/Air-Quality-Sensor/actions/workflows/ci.yml)
-[![GitHub license](https://img.shields.io/github/license/d1ceward/Air-Quality-Sensor)](LICENSE)
+# Air Quality Sensor (v1.3.0)
+
+[![CI](https://github.com/d1ceward/Air-Quality-Sensor/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/d1ceward/Air-Quality-Sensor/actions/workflows/ci.yml)
+[![GitHub issues](https://img.shields.io/github/issues/d1ceward/Air-Quality-Sensor)](https://github.com/d1ceward/Air-Quality-Sensor/issues)
+[![GitHub license](https://img.shields.io/github/license/d1ceward/Air-Quality-Sensor)](https://github.com/d1ceward/Air-Quality-Sensor/blob/develop/LICENSE)
 
 **ESP8266 firmware for AirGradient DIY air quality kits, exposing CO2, particulates, TVOC, temperature,
 humidity and pressure as Prometheus metrics, with a web UI, OTA updates and no credentials in the source.**
@@ -398,13 +401,19 @@ Autonomy on the shield is a matter of hours, and that is the trade.
 
 ## Contributing
 
-Bug reports and pull requests are welcome.
+Bug reports and pull requests are welcome!
+By contributing, you agree to the [Code of Merit](CODE_OF_CONDUCT.md). Security issues go through
+[SECURITY.md](SECURITY.md) rather than a public issue.
 
 1. Fork: [github.com/d1ceward/Air-Quality-Sensor](https://github.com/d1ceward/Air-Quality-Sensor/fork)
 2. Create a branch: `git checkout -b my-new-feature`
 3. Commit: `git commit -am 'Add some feature'`
 4. Push: `git push origin my-new-feature`
 5. Open a Pull Request
+
+## Contributors
+
+- [d1ceward](https://github.com/d1ceward) – creator and maintainer
 
 ## License
 
