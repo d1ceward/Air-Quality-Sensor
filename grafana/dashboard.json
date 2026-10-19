@@ -3549,8 +3549,8 @@
         "spec": {
           "allowCustomValue": false,
           "current": {
-            "text": "Prometheus",
-            "value": "ex6JnLO7z"
+            "text": "",
+            "value": ""
           },
           "hide": "dontHide",
           "includeAll": false,
