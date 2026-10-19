@@ -54,10 +54,16 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      # Named with an explicit path: downloading every artifact only nests each one in a folder of its name
+      # when there are several, so with a single artifact the file lands at the root instead.
+      - name: Download firmware from action artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: air-quality-sensor-d1_mini
+          path: firmware
       - name: Create draft release with firmware
         uses: d1ceward/release-upload-action@be20febaff3a508280c2d8592052a85123c117a6 # v5.0.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           files: |
-            ./air-quality-sensor-d1_mini/air-quality-sensor-d1_mini.bin
+            ./firmware/air-quality-sensor-d1_mini.bin
