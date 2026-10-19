@@ -1,6 +1,6 @@
 ![](.github/images/air_quality_sensor.svg)
 
-# Air Quality Sensor (v1.3.0)
+# Air Quality Sensor (v1.4.0)
 
 [![CI](https://github.com/d1ceward/Air-Quality-Sensor/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/d1ceward/Air-Quality-Sensor/actions/workflows/ci.yml)
 [![GitHub issues](https://img.shields.io/github/issues/d1ceward/Air-Quality-Sensor)](https://github.com/d1ceward/Air-Quality-Sensor/issues)
