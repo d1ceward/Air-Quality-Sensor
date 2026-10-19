@@ -3,6 +3,7 @@
 
 // Local includes
 #include "config.h"
+#include "console.h"
 #include "sensors/sht3x.h"
 
 namespace Sht3x {
@@ -36,7 +37,7 @@ namespace Sht3x {
     static_assert(SHT3X_I2C_ADDRESS == 0x44, "SHTSensor::SHT3X is hard-wired to address 0x44");
 
     if (!probe()) {
-      Serial.println(F("[sht3x] sensor not found, retrying in the background"));
+      Console.println(F("[sht3x] sensor not found, retrying in the background"));
       return false;
     }
 
@@ -53,7 +54,7 @@ namespace Sht3x {
       if (!probe())
         return;
 
-      Serial.println(F("[sht3x] sensor found"));
+      Console.println(F("[sht3x] sensor found"));
     }
 
     if (millis() - lastAttemptMs < TEMP_HUM_INTERVAL_MS)

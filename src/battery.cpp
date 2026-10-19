@@ -5,6 +5,7 @@
 #include "battery.h"
 #include "battery_curve.h"
 #include "config.h"
+#include "console.h"
 
 namespace Battery {
   namespace {
@@ -64,7 +65,7 @@ namespace Battery {
         reportedPercent = BatteryCurve::percentFromVolts(smoothedVolts, Config::get().batteryFullVolts);
         hasSample = true;
 
-        Serial.printf("[battery] %.2f V, %u%%\n", smoothedVolts, reportedPercent);
+        Console.printf("[battery] %.2f V, %u%%\n", smoothedVolts, reportedPercent);
       }
 
       lastSampleMs = millis();

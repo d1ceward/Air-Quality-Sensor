@@ -139,6 +139,7 @@ const char WEB_STATUS[] PROGMEM = R"rawliteral(<title>Air Quality Sensor</title>
       <a class="btn" href="/metrics">Prometheus metrics</a>
       <a class="btn" href="/api/history">Trend data</a>
       <a class="btn" href="/settings">Settings</a>
+      <a class="btn" href="/logs">Logs</a>
     </div>
   </section>
 </div>
@@ -480,6 +481,7 @@ const char WEB_SETTINGS[] PROGMEM = R"rawliteral(<title>Settings</title>
     <div class="panel">
       <div class="actions">
         <a class="btn" href="/update">Firmware update</a>
+        <a class="btn" href="/logs">Logs</a>
         <button id="calibrate">Calibrate CO2</button>
         <button id="reboot">Reboot</button>
         <button id="factory-reset">Factory reset</button>
@@ -628,6 +630,109 @@ async function loadBanners() {
 
 loadSettings();
 loadBanners();
+</script>
+</body>
+</html>
+)rawliteral";
+
+// Console output, the same lines the serial port prints, followed live. Behind the admin password like the
+// settings, so the polls below carry the credentials the browser asked for when the page opened.
+const char WEB_LOGS[] PROGMEM = R"rawliteral(<title>Logs</title>
+<style>
+.log {
+  margin: 0; height: 65vh; overflow: auto; white-space: pre-wrap; word-break: break-all;
+  font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.log .mark { color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Logs</h1>
+    <a class="pill" href="/">back to readings</a>
+    <span class="pill" id="link">connecting</span>
+  </header>
+  <p class="sub">The last 2 KiB of serial output, kept in RAM and lost on reboot.</p>
+
+  <div class="panel"><pre class="log" id="log"></pre></div>
+  <div class="actions">
+    <button type="button" id="pause">Pause</button>
+    <button type="button" id="clear">Clear view</button>
+    <button type="button" id="save">Download</button>
+  </div>
+</div>
+
+<script>
+const el = id => document.getElementById(id);
+const POLL_MS = 2000;
+// Past this the oldest text is dropped from the page, a tab left open for days would otherwise grow forever
+const MAX_CHARS = 200000;
+
+let next = 0;
+let paused = false;
+
+function append(text, isMark) {
+  const log = el('log');
+  const atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 24;
+
+  const node = document.createElement('span');
+  if (isMark) node.className = 'mark';
+  node.textContent = text;
+  log.appendChild(node);
+
+  while (log.textContent.length > MAX_CHARS && log.firstChild) log.removeChild(log.firstChild);
+  if (atBottom) log.scrollTop = log.scrollHeight;
+}
+
+function setLink(online) {
+  const link = el('link');
+  link.textContent = online ? 'live' : 'unreachable';
+  link.className = 'pill ' + (online ? 'on' : 'off');
+}
+
+async function poll() {
+  if (!paused) {
+    try {
+      const response = await fetch('/api/logs?since=' + next, { cache: 'no-store' });
+      if (response.ok) {
+        const start = Number(response.headers.get('X-Log-Start'));
+        const text = await response.text();
+
+        // An answer that does not start where the last one ended either lost bytes to the buffer wrapping
+        // or comes from a device that rebooted in between
+        if (next > 0 && start > next) append('\n-- ' + (start - next) + ' bytes dropped --\n', true);
+        if (next > 0 && start < next) append('\n-- device restarted --\n', true);
+
+        if (text) append(text, false);
+        next = Number(response.headers.get('X-Log-Next'));
+      }
+      setLink(response.ok);
+    } catch (error) {
+      setLink(false);
+    }
+  }
+
+  setTimeout(poll, POLL_MS);
+}
+
+el('pause').addEventListener('click', () => {
+  paused = !paused;
+  el('pause').textContent = paused ? 'Resume' : 'Pause';
+});
+
+el('clear').addEventListener('click', () => { el('log').textContent = ''; });
+
+el('save').addEventListener('click', () => {
+  const blob = new Blob([el('log').textContent], { type: 'text/plain' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'air-quality-log.txt';
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+});
+
+poll();
 </script>
 </body>
 </html>

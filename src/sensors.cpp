@@ -3,6 +3,7 @@
 // Local includes
 #include "aqi.h"
 #include "config.h"
+#include "console.h"
 #include "sensors.h"
 
 namespace Sensors {
@@ -32,7 +33,7 @@ namespace Sensors {
     SenseAirS8::begin();
     Pms5003::begin();
 
-    Serial.printf("[sensors] sht3x %s, sgp30 %s, bmp180 %s\n",
+    Console.printf("[sensors] sht3x %s, sgp30 %s, bmp180 %s\n",
                   climate ? "ok" : "absent", tvoc ? "ok" : "absent", pressure ? "ok" : "absent");
   }
 
