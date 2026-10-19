@@ -3,6 +3,7 @@
 // Local includes
 #include "app_config.h"
 #include "config.h"
+#include "console.h"
 #include "net_time.h"
 
 namespace NetTime {
@@ -27,7 +28,7 @@ namespace NetTime {
   void begin() {
     const AppConfig &config = Config::get();
     configTime(config.timezone.c_str(), config.ntpServer.c_str());
-    Serial.printf("[time] SNTP server %s, timezone %s\n",
+    Console.printf("[time] SNTP server %s, timezone %s\n",
                   config.ntpServer.c_str(), config.timezone.c_str());
   }
 

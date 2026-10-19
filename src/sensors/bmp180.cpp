@@ -6,6 +6,7 @@
 #include "app_config.h"
 #include "barometry.h"
 #include "config.h"
+#include "console.h"
 #include "sensors/bmp180.h"
 
 namespace Bmp180 {
@@ -32,7 +33,7 @@ namespace Bmp180 {
 
   bool begin() {
     if (!probe()) {
-      Serial.println(F("[bmp180] sensor not found, retrying in the background"));
+      Console.println(F("[bmp180] sensor not found, retrying in the background"));
       return false;
     }
 
@@ -48,7 +49,7 @@ namespace Bmp180 {
       if (!probe())
         return;
 
-      Serial.println(F("[bmp180] sensor found"));
+      Console.println(F("[bmp180] sensor found"));
     }
 
     if (millis() - lastAttemptMs < PRESSURE_INTERVAL_MS)

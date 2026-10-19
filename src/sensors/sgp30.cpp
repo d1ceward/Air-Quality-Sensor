@@ -6,6 +6,7 @@
 #include "app_config.h"
 #include "baseline_store.h"
 #include "config.h"
+#include "console.h"
 #include "sensors/sgp30.h"
 
 namespace Sgp30 {
@@ -32,12 +33,12 @@ namespace Sgp30 {
       const bool clockValid = now > 1600000000UL && baseline.epoch > 0;
 
       if (clockValid && now - baseline.epoch > SGP30_BASELINE_MAX_AGE_S) {
-        Serial.println(F("[sgp30] stored baseline too old, ignoring"));
+        Console.println(F("[sgp30] stored baseline too old, ignoring"));
         return;
       }
 
       sensor.setBaseline(baseline.eco2, baseline.tvoc);
-      Serial.printf("[sgp30] baseline restored (eCO2 %u, TVOC %u)\n", baseline.eco2, baseline.tvoc);
+      Console.printf("[sgp30] baseline restored (eCO2 %u, TVOC %u)\n", baseline.eco2, baseline.tvoc);
     }
 
     void persistBaseline() {
@@ -51,7 +52,7 @@ namespace Sgp30 {
       if (!BaselineStore::save(baseline))
         return;
 
-      Serial.printf("[sgp30] baseline saved (eCO2 %u, TVOC %u)\n", baseline.eco2, baseline.tvoc);
+      Console.printf("[sgp30] baseline saved (eCO2 %u, TVOC %u)\n", baseline.eco2, baseline.tvoc);
     }
 
     bool probe() {
@@ -70,7 +71,7 @@ namespace Sgp30 {
 
   bool begin() {
     if (!probe()) {
-      Serial.println(F("[sgp30] sensor not found, retrying in the background"));
+      Console.println(F("[sgp30] sensor not found, retrying in the background"));
       return false;
     }
 
@@ -86,7 +87,7 @@ namespace Sgp30 {
       if (!probe())
         return;
 
-      Serial.println(F("[sgp30] sensor found"));
+      Console.println(F("[sgp30] sensor found"));
     }
 
     if (millis() - lastAttemptMs >= TVOC_INTERVAL_MS) {

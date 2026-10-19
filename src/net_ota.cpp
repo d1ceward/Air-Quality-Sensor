@@ -4,6 +4,7 @@
 // Local includes
 #include "app_config.h"
 #include "config.h"
+#include "console.h"
 #include "display.h"
 #include "net_ota.h"
 #include "net_wifi.h"
@@ -15,7 +16,7 @@ namespace NetOta {
 
     void onStart() {
       updating = true;
-      Serial.println(F("[ota] update started"));
+      Console.println(F("[ota] update started"));
       Display::showMessage("OTA update", "0%");
     }
 
@@ -35,13 +36,13 @@ namespace NetOta {
 
     void onEnd() {
       updating = false;
-      Serial.println(F("[ota] update finished, rebooting"));
+      Console.println(F("[ota] update finished, rebooting"));
       Display::showMessage("OTA update", "done", "rebooting");
     }
 
     void onError(ota_error_t error) {
       updating = false;
-      Serial.printf("[ota] error %u\n", error);
+      Console.printf("[ota] error %u\n", error);
       Display::showMessage("OTA update", "failed", String(error));
     }
   }
@@ -62,7 +63,7 @@ namespace NetOta {
     // Browser upload form, protected with the same password
     httpUpdater.setup(&server, "/update", ADMIN_USER, config.adminPassword.c_str());
 
-    Serial.printf("[ota] ready (network upload and http://%s:%u/update)\n",
+    Console.printf("[ota] ready (network upload and http://%s:%u/update)\n",
                   NetWifi::hostname().c_str(), config.httpPort);
   }
 

@@ -5,6 +5,7 @@
 // Local includes
 #include "app_config.h"
 #include "config.h"
+#include "console.h"
 #include "display.h"
 #include "hostname.h"
 #include "net_wifi.h"
@@ -41,7 +42,7 @@ namespace NetWifi {
         return;
 
       if (!WiFi.config(config.ip, config.gateway, config.subnet, config.dns))
-        Serial.println(F("[wifi] static IP configuration rejected"));
+        Console.println(F("[wifi] static IP configuration rejected"));
     }
 
     void startCaptivePortal() {
@@ -55,7 +56,7 @@ namespace NetWifi {
 
       // A wildcard record, so whatever hostname the phone probes resolves here
       if (!dnsServer.start(CAPTIVE_PORTAL_DNS_PORT, "*", WiFi.softAPIP())) {
-        Serial.println(F("[wifi] captive portal DNS start failed"));
+        Console.println(F("[wifi] captive portal DNS start failed"));
         return;
       }
 
@@ -85,7 +86,7 @@ namespace NetWifi {
 
       startCaptivePortal();
 
-      Serial.printf("[wifi] setup access point \"%s\" at %s\n",
+      Console.printf("[wifi] setup access point \"%s\" at %s\n",
                     apSsid.c_str(), WiFi.softAPIP().toString().c_str());
     }
 
@@ -97,7 +98,7 @@ namespace NetWifi {
       WiFi.softAPdisconnect(true);
       accessPointActive = false;
       WiFi.mode(WIFI_STA);
-      Serial.println(F("[wifi] setup access point stopped"));
+      Console.println(F("[wifi] setup access point stopped"));
     }
 
     void startConnection() {
@@ -111,7 +112,7 @@ namespace NetWifi {
       lastRetryMs = connectStartedMs;
       waitingForConnection = true;
 
-      Serial.printf("[wifi] connecting to \"%s\"\n", config.wifiSsid.c_str());
+      Console.printf("[wifi] connecting to \"%s\"\n", config.wifiSsid.c_str());
     }
 
     void startMdns() {
@@ -119,13 +120,13 @@ namespace NetWifi {
         return;
 
       if (!MDNS.begin(host)) {
-        Serial.println(F("[wifi] mDNS start failed"));
+        Console.println(F("[wifi] mDNS start failed"));
         return;
       }
 
       MDNS.addService("http", "tcp", Config::get().httpPort);
       mdnsStarted = true;
-      Serial.printf("[wifi] reachable at http://%s.local:%u/\n", host.c_str(), Config::get().httpPort);
+      Console.printf("[wifi] reachable at http://%s.local:%u/\n", host.c_str(), Config::get().httpPort);
     }
 
     void stopMdns() {
@@ -149,7 +150,7 @@ namespace NetWifi {
 
       startMdns();
 
-      Serial.printf("[wifi] connected, IP %s, RSSI %d dBm\n",
+      Console.printf("[wifi] connected, IP %s, RSSI %d dBm\n",
                     WiFi.localIP().toString().c_str(), WiFi.RSSI());
     }
   }
@@ -168,7 +169,7 @@ namespace NetWifi {
     WiFi.hostname(host);
 
     if (!Config::hasWifiCredentials()) {
-      Serial.println(F("[wifi] no credentials, starting setup access point"));
+      Console.println(F("[wifi] no credentials, starting setup access point"));
       WiFi.mode(WIFI_AP);
       startAccessPoint();
       startMdns();
@@ -204,7 +205,7 @@ namespace NetWifi {
     if (connected) {
       connected = false;
       lastRetryMs = millis();
-      Serial.println(F("[wifi] connection lost, retrying"));
+      Console.println(F("[wifi] connection lost, retrying"));
     }
 
     if (!Config::hasWifiCredentials())
@@ -213,7 +214,7 @@ namespace NetWifi {
     // Give up on the initial attempt and expose the setup portal, while still retrying the configured network
     // in the background.
     if (waitingForConnection && millis() - connectStartedMs >= WIFI_CONNECT_TIMEOUT_MS) {
-      Serial.println(F("[wifi] connection timed out"));
+      Console.println(F("[wifi] connection timed out"));
       waitingForConnection = false;
       startAccessPoint();
       startMdns();

@@ -4,6 +4,7 @@
 // Local includes
 #include "app_config.h"
 #include "config.h"
+#include "console.h"
 #include "history_recorder.h"
 #include "metrics.h"
 #include "net_wifi.h"
@@ -107,6 +108,43 @@ namespace WebUI {
       String payload;
       serializeJson(document, payload);
       sendJson(200, payload);
+    }
+
+    void handleLogsPage() {
+      if (!authorised())
+        return;
+
+      sendPage(WEB_LOGS);
+    }
+
+    // Console output from ?since= on. X-Log-Start says where the answer actually begins, which differs from
+    // since when bytes fell out of the buffer or the device rebooted, and X-Log-Next is what to ask for next.
+    // Behind the password: the log names the network, the addresses and what the device is doing.
+    void handleLogs() {
+      if (!authorised())
+        return;
+
+      const LogRing::Buffer &ring = Console.ring();
+      uint32_t offset = ring.clamp(static_cast<uint32_t>(httpServer->arg("since").toInt()));
+      const uint32_t end = ring.total();
+
+      httpServer->sendHeader(F("X-Log-Start"), String(offset));
+      httpServer->sendHeader(F("X-Log-Next"), String(end));
+      httpServer->setContentLength(CONTENT_LENGTH_UNKNOWN);
+      httpServer->send(200, F("text/plain; charset=utf-8"), "");
+
+      // Nothing writes to the console while this runs, so the range read above stays put
+      char chunk[256];
+      while (offset < end) {
+        const size_t length = ring.read(offset, chunk, sizeof(chunk));
+        if (length == 0)
+          break;
+
+        httpServer->sendContent(chunk, length);
+        offset += length;
+      }
+
+      httpServer->sendContent("");
     }
 
     void handleHistory() {
@@ -298,6 +336,8 @@ namespace WebUI {
     server.on("/settings", HTTP_GET, handleSettingsPage);
     server.on("/metrics", HTTP_GET, handleMetrics);
     server.on("/api/status", HTTP_GET, handleStatus);
+    server.on("/logs", HTTP_GET, handleLogsPage);
+    server.on("/api/logs", HTTP_GET, handleLogs);
     server.on("/api/history", HTTP_GET, handleHistory);
     server.on("/api/config", HTTP_GET, handleGetConfig);
     server.on("/api/config", HTTP_POST, handlePostConfig);
@@ -308,12 +348,12 @@ namespace WebUI {
     server.onNotFound(handleNotFound);
 
     server.begin();
-    Serial.printf("[http] listening on port %u\n", Config::get().httpPort);
+    Console.printf("[http] listening on port %u\n", Config::get().httpPort);
 
     if (Config::hasNoAdminPassword())
-      Serial.println(F("[http] no admin password set, the settings and the firmware upload are open"));
+      Console.println(F("[http] no admin password set, the settings and the firmware upload are open"));
     else if (Config::usesDefaultAdminPassword())
-      Serial.println(F("[http] admin password is still the one built into the firmware, change it"));
+      Console.println(F("[http] admin password is still the one built into the firmware, change it"));
   }
 
   void loop() {
@@ -322,11 +362,11 @@ namespace WebUI {
 
     if (rebootAtMs != 0 && millis() >= rebootAtMs) {
       if (factoryResetPending) {
-        Serial.println(F("[http] restoring the factory configuration"));
+        Console.println(F("[http] restoring the factory configuration"));
         Config::reset();
       }
 
-      Serial.println(F("[http] rebooting on request"));
+      Console.println(F("[http] rebooting on request"));
       ESP.restart();
     }
   }
