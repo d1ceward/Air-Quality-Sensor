@@ -408,6 +408,15 @@ push to `master` and `develop` and on every pull request.
 
 ### Releases
 
+From an up to date `master` with a clean tree:
+
+```sh
+bin/release 1.5.0
+```
+
+It writes the version into [include/config.h](include/config.h), the README title and the Grafana dashboard
+description, commits "Bump version number to v1.5.0", pushes `master`, then tags and pushes `v1.5.0`.
+
 Pushing a `v*` tag runs [the build workflow](.github/workflows/build.yml): it checks the tag against
 `PROJECT_VERSION` in [include/config.h](include/config.h), builds the firmware and attaches it to a draft
 release.
