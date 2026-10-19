@@ -9,8 +9,8 @@ on:
       - opened
       - synchronize
 jobs:
-  build:
-    name: Tests and firmware build
+  lints:
+    name: Lints
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -31,7 +31,29 @@ jobs:
           python-version: '3.12'
       - name: Install PlatformIO
         run: pip install --upgrade platformio
-      - name: Host tests
+      - name: Run cppcheck
+        run: pio check -e d1_mini --fail-on-defect=medium
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: PlatformIO cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.platformio/.cache
+            ~/.platformio/packages
+            ~/.platformio/platforms
+          key: ${{ runner.os }}-pio-${{ hashFiles('platformio.ini') }}
+      - name: Install Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Install PlatformIO
+        run: pip install --upgrade platformio
+      - name: Run tests
         run: pio test -e native
-      - name: Firmware build
-        run: pio run -e d1_mini

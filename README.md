@@ -93,6 +93,11 @@ pio run -t upload
 pio device monitor
 ```
 
+Each [release](https://github.com/d1ceward/Air-Quality-Sensor/releases) also ships a prebuilt
+`air-quality-sensor-d1_mini.bin`. Flash it over USB with
+`esptool.py write_flash 0x0 air-quality-sensor-d1_mini.bin`, or upload it from a browser on `/update` to a
+device already running this firmware.
+
 ### First boot
 
 With no WiFi credentials stored, the device starts an access point named `air-quality-setup-<chipid>` with
@@ -390,8 +395,22 @@ rollover accounting, hostname sanitising against RFC 1123, Prometheus label esca
 and the console log buffer. Expected values come from the datasheets, from the EPA tables or from an
 independent computation, never from the implementation under test.
 
-[CI](.github/workflows/ci.yml) runs the suites and a firmware build on every push and pull request. The
-drivers, the web server and the display need the hardware and are exercised on the device.
+The drivers, the web server and the display need the hardware and are exercised on the device.
+
+### Static analysis
+
+```sh
+pio check -e d1_mini
+```
+
+cppcheck, limited to the project sources. [CI](.github/workflows/ci.yml) runs it and the host tests on every
+push to `master` and `develop` and on every pull request.
+
+### Releases
+
+Pushing a `v*` tag runs [the build workflow](.github/workflows/build.yml): it checks the tag against
+`PROJECT_VERSION` in [include/config.h](include/config.h), builds the firmware and attaches it to a draft
+release.
 
 ### Deliberately not implemented
 
